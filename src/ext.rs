@@ -29,7 +29,7 @@ use {TcpBuilder, UdpBuilder};
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
 
 #[cfg(windows)]
-extern {
+extern "system" {
     fn WSAIoctl(s: libc::SOCKET,
                 dwIoControlCode: libc::DWORD,
                 lpvInBuffer: libc::LPVOID,
@@ -49,7 +49,7 @@ struct tcp_keepalive {
     keepaliveinterval: libc::c_ulong,
 }
 
-extern {
+extern "system" {
     fn getsockopt(sockfd: Socket,
                   level: c_int,
                   optname: c_int,
