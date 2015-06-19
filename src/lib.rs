@@ -16,7 +16,7 @@ use std::io;
 use std::ops::Neg;
 use std::net::{ToSocketAddrs, SocketAddr};
 
-use utils::{One, NetInt};
+use utils::{One, NetInt, Zero};
 
 mod tcp;
 mod udp;
@@ -25,6 +25,7 @@ mod ext;
 mod utils;
 
 #[cfg(unix)] #[path = "unix/mod.rs"] mod sys;
+#[cfg(windows)] #[path = "windows/mod.rs"] mod sys;
 
 pub use tcp::TcpBuilder;
 pub use udp::UdpBuilder;
@@ -46,9 +47,18 @@ fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
     }
 }
 
+#[cfg(unix)]
 fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     let one: T = T::one();
     if t == -one {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(t)
+    }
+}
+#[cfg(windows)]
+fn cvt<T: PartialEq + Zero>(t: T) -> io::Result<T> {
+    if t == T::zero() {
         Err(io::Error::last_os_error())
     } else {
         Ok(t)

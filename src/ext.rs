@@ -18,14 +18,39 @@ use {TcpBuilder, UdpBuilder};
 
 #[cfg(unix)] type Socket = c_int;
 #[cfg(unix)] use std::os::unix::prelude::*;
+#[cfg(windows)] type Socket = libc::SOCKET;
+#[cfg(windows)] use std::os::windows::prelude::*;
 
 #[cfg(target_os = "linux")] const IPV6_MULTICAST_LOOP: c_int = 19;
 #[cfg(target_os = "macos")] const IPV6_MULTICAST_LOOP: c_int = 11;
+#[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
 #[cfg(target_os = "macos")] const IPV6_V6ONLY: c_int = 27;
+#[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
+
+#[cfg(windows)]
+extern {
+    fn WSAIoctl(s: libc::SOCKET,
+                dwIoControlCode: libc::DWORD,
+                lpvInBuffer: libc::LPVOID,
+                cbInBuffer: libc::DWORD,
+                lpvOutBuffer: libc::LPVOID,
+                cbOutBuffer: libc::DWORD,
+                lpcbBytesReturned: libc::LPDWORD,
+                lpOverlapped: *mut c_void,
+                lpCompletionRoutine: *mut c_void) -> c_int;
+}
+
+#[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
+#[cfg(windows)]
+struct tcp_keepalive {
+    onoff: libc::c_ulong,
+    keepalivetime: libc::c_ulong,
+    keepaliveinterval: libc::c_ulong,
+}
 
 extern {
-    fn getsockopt(sockfd: c_int,
+    fn getsockopt(sockfd: Socket,
                   level: c_int,
                   optname: c_int,
                   optval: *mut c_void,
@@ -116,6 +141,10 @@ trait AsSock {
 impl<T: AsRawFd> AsSock for T {
     fn as_sock(&self) -> Socket { self.as_raw_fd() }
 }
+#[cfg(windows)]
+impl<T: AsRawSocket> AsSock for T {
+    fn as_sock(&self) -> Socket { self.as_raw_socket() }
+}
 
 impl TcpStreamExt for TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
@@ -148,6 +177,54 @@ impl TcpStreamExt for TcpStream {
         let secs = try!(getopt::<c_int>(self.as_sock(), libc::IPPROTO_TCP,
                                         libc::TCP_KEEPIDLE));
         Ok(Some(Duration::new(secs as u64, 0)))
+    }
+
+    #[cfg(windows)]
+    fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
+        let ms = dur2timeout(keepalive);
+        let ka = tcp_keepalive {
+            onoff: keepalive.is_some() as libc::c_ulong,
+            keepalivetime: ms as libc::c_ulong,
+            keepaliveinterval: ms as libc::c_ulong,
+        };
+        unsafe {
+            ::cvt(WSAIoctl(self.as_sock(),
+                          SIO_KEEPALIVE_VALS,
+                          &ka as *const _ as *mut _,
+                          mem::size_of_val(&ka) as libc::DWORD,
+                          0 as *mut _,
+                          0,
+                          0 as *mut _,
+                          0 as *mut _,
+                          0 as *mut _)).map(|_| ())
+        }
+    }
+
+    #[cfg(windows)]
+    fn keepalive(&self) -> io::Result<Option<Duration>> {
+        let mut ka = tcp_keepalive {
+            onoff: 0,
+            keepalivetime: 0,
+            keepaliveinterval: 0,
+        };
+        unsafe {
+            try!(::cvt(WSAIoctl(self.as_sock(),
+                                SIO_KEEPALIVE_VALS,
+                                0 as *mut _,
+                                0,
+                                &mut ka as *mut _ as *mut _,
+                                mem::size_of_val(&ka) as libc::DWORD,
+                                0 as *mut _,
+                                0 as *mut _,
+                                0 as *mut _)));
+        }
+        Ok({
+            if ka.onoff == 0 {
+                None
+            } else {
+                timeout2dur(ka.keepaliveinterval as libc::DWORD)
+            }
+        })
     }
 
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
@@ -203,6 +280,24 @@ fn timeout2dur(dur: libc::timeval) -> Option<Duration> {
         None
     } else {
         Some(Duration::new(dur.tv_sec as u64, 0))
+    }
+}
+
+#[cfg(windows)]
+fn dur2timeout(dur: Option<Duration>) -> libc::DWORD {
+    // TODO: be more rigorous
+    match dur {
+        Some(d) => (d.secs() * 1000) as libc::DWORD,
+        None => 0,
+    }
+}
+
+#[cfg(windows)]
+fn timeout2dur(dur: libc::DWORD) -> Option<Duration> {
+    if dur == 0 {
+        None
+    } else {
+        Some(Duration::new((dur / 1000) as u64, 0))
     }
 }
 
