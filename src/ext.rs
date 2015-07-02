@@ -148,7 +148,7 @@ impl<T: AsRawSocket> AsSock for T {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(not(target_os = "macos"), not(target_os = "ios"), unix))]
 const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
 
 impl TcpStreamExt for TcpStream {
