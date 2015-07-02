@@ -146,6 +146,11 @@ impl<T: AsRawSocket> AsSock for T {
     fn as_sock(&self) -> Socket { self.as_raw_socket() }
 }
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
+
 impl TcpStreamExt for TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         setopt(self.as_sock(), libc::IPPROTO_TCP, libc::TCP_NODELAY,
@@ -161,7 +166,7 @@ impl TcpStreamExt for TcpStream {
         try!(setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
                     keepalive.is_some() as c_int));
         if let Some(dur) = keepalive {
-            try!(setopt(self.as_sock(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
+            try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
                         dur.secs() as c_int));
         }
         Ok(())
@@ -175,7 +180,7 @@ impl TcpStreamExt for TcpStream {
             return Ok(None)
         }
         let secs = try!(getopt::<c_int>(self.as_sock(), libc::IPPROTO_TCP,
-                                        libc::TCP_KEEPIDLE));
+                                        KEEPALIVE_OPTION));
         Ok(Some(Duration::new(secs as u64, 0)))
     }
 

@@ -16,7 +16,7 @@ use std::io;
 use std::ops::Neg;
 use std::net::{ToSocketAddrs, SocketAddr};
 
-use utils::{One, NetInt, Zero};
+use utils::{One, NetInt};
 
 mod tcp;
 mod udp;
@@ -57,7 +57,7 @@ fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     }
 }
 #[cfg(windows)]
-fn cvt<T: PartialEq + Zero>(t: T) -> io::Result<T> {
+fn cvt<T: PartialEq + utils::Zero>(t: T) -> io::Result<T> {
     if t == T::zero() {
         Err(io::Error::last_os_error())
     } else {
