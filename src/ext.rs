@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(bad_style)]
+
 use std::io;
 use std::mem;
 use std::net::{TcpStream, TcpListener, UdpSocket, Ipv4Addr, Ipv6Addr};
@@ -43,6 +45,7 @@ extern "system" {
 
 #[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
 #[cfg(windows)]
+#[repr(C)]
 struct tcp_keepalive {
     onoff: libc::c_ulong,
     keepalivetime: libc::c_ulong,
@@ -193,15 +196,15 @@ impl TcpStreamExt for TcpStream {
             keepaliveinterval: ms as libc::c_ulong,
         };
         unsafe {
-            ::cvt(WSAIoctl(self.as_sock(),
-                          SIO_KEEPALIVE_VALS,
-                          &ka as *const _ as *mut _,
-                          mem::size_of_val(&ka) as libc::DWORD,
-                          0 as *mut _,
-                          0,
-                          0 as *mut _,
-                          0 as *mut _,
-                          0 as *mut _)).map(|_| ())
+            ::cvt_win(WSAIoctl(self.as_sock(),
+                               SIO_KEEPALIVE_VALS,
+                               &ka as *const _ as *mut _,
+                               mem::size_of_val(&ka) as libc::DWORD,
+                               0 as *mut _,
+                               0,
+                               0 as *mut _,
+                               0 as *mut _,
+                               0 as *mut _)).map(|_| ())
         }
     }
 
@@ -213,15 +216,15 @@ impl TcpStreamExt for TcpStream {
             keepaliveinterval: 0,
         };
         unsafe {
-            try!(::cvt(WSAIoctl(self.as_sock(),
-                                SIO_KEEPALIVE_VALS,
-                                0 as *mut _,
-                                0,
-                                &mut ka as *mut _ as *mut _,
-                                mem::size_of_val(&ka) as libc::DWORD,
-                                0 as *mut _,
-                                0 as *mut _,
-                                0 as *mut _)));
+            try!(::cvt_win(WSAIoctl(self.as_sock(),
+                                    SIO_KEEPALIVE_VALS,
+                                    0 as *mut _,
+                                    0,
+                                    &mut ka as *mut _ as *mut _,
+                                    mem::size_of_val(&ka) as libc::DWORD,
+                                    0 as *mut _,
+                                    0 as *mut _,
+                                    0 as *mut _)));
         }
         Ok({
             if ka.onoff == 0 {
