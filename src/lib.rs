@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(test, deny(warnings))]
 #![feature(duration)]
 
 extern crate libc;
@@ -47,7 +48,6 @@ fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
     }
 }
 
-#[cfg(unix)]
 fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     let one: T = T::one();
     if t == -one {
@@ -56,8 +56,9 @@ fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
         Ok(t)
     }
 }
+
 #[cfg(windows)]
-fn cvt<T: PartialEq + utils::Zero>(t: T) -> io::Result<T> {
+fn cvt_win<T: PartialEq + utils::Zero>(t: T) -> io::Result<T> {
     if t == T::zero() {
         Err(io::Error::last_os_error())
     } else {
