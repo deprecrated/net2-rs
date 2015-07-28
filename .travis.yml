@@ -1,23 +1,23 @@
 language: rust
 rust:
+  - 1.1.0
+  - beta
   - nightly
 sudo: false
+before_script:
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 script:
-  - cargo build --verbose
-  - cargo test --verbose
+  - cargo test
+  - if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
+      cargo test --features nightly;
+    fi
   - rustdoc --test README.md -L target/debug -L target/debug/deps
   - cargo doc
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  [ $TRAVIS_RUST_VERSION = nightly ] &&
-  echo '<meta http-equiv=refresh content=0;url=net2/index.html>' > target/doc/index.html &&
-  pip install ghp-import --user $USER &&
-  $HOME/.local/bin/ghp-import -n target/doc &&
-  git push -qf https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
+after_success:
+  - travis-cargo --only nightly doc-upload
 notifications:
   email:
     on_success: never
 env:
   global:
-    secure: LkBsYYIDI89u+HzATCWjiZG4NwBBis1SeDE5q2uY2O+nlwqhMfYmm7CtAv1zcuacqp1dHacVLFOBLSDsOziyJAhOphpFwB4T90gx/eAiW/MLnjwkmT1/iSAzaRlcX40FQamySN1nkhUY+XCm7fP7Mnd8JAcVjF/PXjOvSGDU4DexBywugD+DfaDIbq9hyi+miBPoXu9Uo4gpbQmpzdE9dtgBgid/evoh90ee8dqRA+3W1A/myYB4gSzfWCiuNFV0Ja4SqeVGb5+Mz2JIIYpe4hry3iOc9WPTU4S/8jafLHoyHY9ZwYt4zCCWlEmmD53UeDmwai3anNuDVwjFQ+sAIVd9O77+ZFRb18CLGIxVLBde81flxgb57kzEzxDZunx8AgvK+TpxEyl46pVJJHd6n3wbq88GReeCdb589Nk0rVTiuiEz0BKTolmZoSedjaHcPPFDcSAHYOl5I4vXCO+xeIb2u95lJJHnsY3aXpvsULaKbohgku4Id0VpsYSH7Xe5XUBaT3Tc6hIjwFTL2W5gwhfsEWX6KrpFSEX/ny7/gKeuP9H66K/zEwX2hQEP/FgJDdDwFwlJsUxpTuMv5FPEbzWt2fe9KeyUBWF8/A/zYgDRtaXNYoKjtFxbwcIuq4alQlUMwC2d4AOkyldIU/ClzaRRCbFWppyPgzm5zZB2l4I=
+    secure: hO3XLPiBYBn7ODZDG8ShJw6RTC0sHZOfyn+eJs0fIku+mDCvxmYXYXW9U1kQIudrK+RnQVAHJYZ138BC6Nv5Ms/Jvi1vbME3yEDm0wzxUVbb2YF67BzETNjSa1NHjlGy2Ksw+caVUz0lcBr6QLG8AJDw0Y4b+2fydIMC1vwmZoWSTD6xmVA/yd8JA2lTfDduPivUYJFVYjSbiRlXPdwelMfgMIdQI8FJta9O6OVvwgxbpG21m45FGgsS/bbv0O9cdwstKxyX2/pI95XlYRwI4Dv3vZ5+nbgym41jF5F/1o1T5bE/6N9hewZqlTv3nHP3n7Q9d/HE2e0EqLRcavROJ4p1VQRDouJZ5nIp5rOI9iycJdzZXHtbEiqPTeyIMtUlkvzIlUESLrcGRLE8lP2AQedM+/q7S6QEDznKH6WFhFScd+3/ftwslpXA1vv2tCaxTzpGSBjabCFwn1SDXkV1utHo1uu9X3KOP0O8s6MAynM8Kv9MwZIRoSUzU42fVdZFWcphUlxMksygufRYyMKsTL+lzb7PNuQKGxwsmN3zzq7JX+lEK83v4+W7B+z6fG7QzRqNMEUU0TYN3UJG2a44A27iSaLoeLI+w2NEkD+uf3PdQ9LBdPvFGcc3ARGteIzRpmyHrACA8N8Sa7lUfQfWxHckq8OqnLWX69Ca6P+52EQ=

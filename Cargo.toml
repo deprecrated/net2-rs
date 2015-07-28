@@ -13,3 +13,6 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 
 [dependencies]
 libc = "0.1"
+
+[features]
+nightly = []
