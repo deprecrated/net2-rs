@@ -31,7 +31,6 @@ mod utils;
 pub use tcp::TcpBuilder;
 pub use udp::UdpBuilder;
 pub use ext::{TcpStreamExt, TcpListenerExt, UdpSocketExt};
-pub use ext::{TcpBuilderExt, UdpBuilderExt};
 
 fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
     let mut addrs = try!(tsa.to_socket_addrs());

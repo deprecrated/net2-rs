@@ -133,16 +133,6 @@ pub trait UdpSocketExt {
                           -> io::Result<()>;
 }
 
-pub trait TcpBuilderExt {
-    fn ttl(&self, ttl: u32) -> io::Result<&Self>;
-    fn only_v6(&self, only_v6: bool) -> io::Result<&Self>;
-}
-
-pub trait UdpBuilderExt {
-    fn ttl(&self, ttl: u32) -> io::Result<&Self>;
-    fn only_v6(&self, only_v6: bool) -> io::Result<&Self>;
-}
-
 trait AsSock {
     fn as_sock(&self) -> Socket;
 }
@@ -459,7 +449,7 @@ impl TcpListenerExt for TcpListener {
     }
 }
 
-impl TcpBuilderExt for TcpBuilder {
+impl TcpBuilder {
     fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
@@ -471,7 +461,7 @@ impl TcpBuilderExt for TcpBuilder {
     }
 }
 
-impl UdpBuilderExt for UdpBuilder {
+impl UdpBuilder {
     fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
