@@ -14,7 +14,7 @@ Extensions to the standard library's networking types, proposed in [RFC
 ```toml
 # Cargo.toml
 [dependencies]
-net2 = "0.1"
+net2 = "0.2"
 ```
 
 # License
