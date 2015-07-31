@@ -450,34 +450,34 @@ impl TcpListenerExt for TcpListener {
 }
 
 impl TcpBuilder {
-    fn ttl(&self, ttl: u32) -> io::Result<&Self> {
+    pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
-    fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
+    pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
-    fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
+    pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR, reuse as c_int)
             .map(|()| self)
     }
 }
 
 impl UdpBuilder {
-    fn ttl(&self, ttl: u32) -> io::Result<&Self> {
+    pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
-    fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
+    pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
-    fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
+    pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR, reuse as c_int)
             .map(|()| self)
     }
