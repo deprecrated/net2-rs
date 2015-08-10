@@ -48,7 +48,7 @@ impl UdpBuilder {
     {
         try!(self.with_socket(|sock| {
             let addr = try!(::one_addr(addr));
-            sock.connect(&addr)
+            sock.bind(&addr)
         }));
         Ok(self.socket.borrow_mut().take().unwrap().into_inner().into_udp_socket())
     }
