@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![cfg_attr(test, deny(warnings))]
-#![cfg_attr(feature = "nightly", feature(duration))]
 
 extern crate libc;
 

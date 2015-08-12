@@ -167,7 +167,7 @@ impl TcpStreamExt for TcpStream {
                     keepalive.is_some() as c_int));
         if let Some(dur) = keepalive {
             try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
-                        dur.secs() as c_int));
+                        dur.as_secs() as c_int));
         }
         Ok(())
     }
@@ -278,7 +278,7 @@ impl TcpStreamExt for TcpStream {
 fn dur2timeout(dur: Option<Duration>) -> libc::timeval {
     // TODO: be more rigorous
     match dur {
-        Some(d) => libc::timeval { tv_sec: d.secs() as libc::time_t, tv_usec: 0 },
+        Some(d) => libc::timeval { tv_sec: d.as_secs() as libc::time_t, tv_usec: 0 },
         None => libc::timeval { tv_sec: 0, tv_usec: 0 },
     }
 }
@@ -296,7 +296,7 @@ fn timeout2dur(dur: libc::timeval) -> Option<Duration> {
 fn dur2timeout(dur: Option<Duration>) -> libc::DWORD {
     // TODO: be more rigorous
     match dur {
-        Some(d) => (d.secs() * 1000) as libc::DWORD,
+        Some(d) => (d.as_secs() * 1000) as libc::DWORD,
         None => 0,
     }
 }
