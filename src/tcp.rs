@@ -63,8 +63,8 @@ impl TcpBuilder {
     pub fn listen(&self, backlog: i32) -> io::Result<TcpListener> {
         self.with_socket(|sock| {
             sock.listen(backlog)
-        }).map(|()| {
-            self.socket.borrow_mut().take().unwrap().into_inner().into_tcp_listener()
+        }).and_then(|()| {
+            self.to_tcp_listener()
         })
     }
 
@@ -84,9 +84,34 @@ impl TcpBuilder {
             try!(addr.to_socket_addrs()).fold(Err(err), |prev, addr| {
                 prev.or_else(|_| sock.connect(&addr))
             })
-        }).map(|()| {
-            self.socket.borrow_mut().take().unwrap().into_inner().into_tcp_stream()
+        }).and_then(|()| {
+            self.to_tcp_stream()
         })
+    }
+
+    /// Converts this builder into a `TcpStream`
+    ///
+    /// This function will consume the internal socket and return it re-wrapped
+    /// as a `TcpStream`. An error will be returned if the internal socket has
+    /// already been consumed from a successful call to `connect`, `listen`,
+    /// etc.
+    pub fn to_tcp_stream(&self) -> io::Result<TcpStream> {
+        self.socket.borrow_mut().take().map(|s| s.into_inner().into_tcp_stream())
+            .ok_or(io::Error::new(io::ErrorKind::Other,
+                                  "socket has already been consumed"))
+    }
+
+    /// Converts this builder into a `TcpListener`
+    ///
+    /// This function will consume the internal socket and return it re-wrapped
+    /// as a `TcpListener`. An error will be returned if the internal socket has
+    /// already been consumed from a successful call to `connect`, `listen`,
+    /// etc.
+    pub fn to_tcp_listener(&self) -> io::Result<TcpListener> {
+        self.socket.borrow_mut().take()
+            .map(|s| s.into_inner().into_tcp_listener())
+            .ok_or(io::Error::new(io::ErrorKind::Other,
+                                  "socket has already been consumed"))
     }
 
     fn with_socket<F>(&self, f: F) -> io::Result<()>
