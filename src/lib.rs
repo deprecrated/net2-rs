@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![cfg_attr(test, deny(warnings))]
+#![doc(html_root_url = "http://alexcrichton.com/net2-rs")]
 
 extern crate libc;
 
