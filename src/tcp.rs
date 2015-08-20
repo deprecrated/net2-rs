@@ -128,9 +128,8 @@ impl TcpBuilder {
 
 impl fmt::Debug for TcpBuilder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TcpBuilder")
-         .field("socket", self.socket.borrow().as_ref().unwrap())
-         .finish()
+        write!(f, "TcpBuilder {{ socket: {:?} }}",
+               self.socket.borrow().as_ref().unwrap())
     }
 }
 

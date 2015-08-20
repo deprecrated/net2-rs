@@ -67,9 +67,8 @@ impl UdpBuilder {
 
 impl fmt::Debug for UdpBuilder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("UdpBuilder")
-         .field("socket", self.socket.borrow().as_ref().unwrap())
-         .finish()
+        write!(f, "UdpBuilder {{ socket: {:?} }}",
+               self.socket.borrow().as_ref().unwrap())
     }
 }
 
