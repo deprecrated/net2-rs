@@ -11,6 +11,7 @@
 use std::cell::RefCell;
 use std::io;
 use std::net::{ToSocketAddrs, TcpListener, TcpStream};
+use std::fmt;
 use libc;
 
 use IntoInner;
@@ -122,6 +123,14 @@ impl TcpBuilder {
             None => Err(io::Error::new(io::ErrorKind::Other,
                                        "builder has already finished its socket")),
         }
+    }
+}
+
+impl fmt::Debug for TcpBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TcpBuilder")
+         .field("socket", self.socket.borrow().as_ref().unwrap())
+         .finish()
     }
 }
 

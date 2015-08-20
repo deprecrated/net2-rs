@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cell::RefCell;
+use std::fmt;
 use std::io;
 use std::net::{ToSocketAddrs, UdpSocket};
 use libc;
@@ -61,6 +62,14 @@ impl UdpBuilder {
             None => Err(io::Error::new(io::ErrorKind::Other,
                                        "builder has already finished its socket")),
         }
+    }
+}
+
+impl fmt::Debug for UdpBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("UdpBuilder")
+         .field("socket", self.socket.borrow().as_ref().unwrap())
+         .finish()
     }
 }
 

@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
 use std::io;
-use std::net::SocketAddr;
 use std::mem;
+use std::net::SocketAddr;
 use libc::{self, c_int, socklen_t, sockaddr};
 
 use sys;
@@ -42,6 +43,12 @@ impl Socket {
         unsafe {
             ::cvt(libc::connect(self.inner.raw(), addr, len)).map(|_| ())
         }
+    }
+}
+
+impl fmt::Debug for Socket {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.inner.raw().fmt(f)
     }
 }
 
