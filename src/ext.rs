@@ -167,12 +167,12 @@ impl TcpStreamExt for TcpStream {
             .map(int2bool)
     }
 
-    #[cfg(all(unix, feature = "nightly"))]
+    #[cfg(feature = "nightly")]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
         self.set_keepalive_ms(keepalive.map(dur2ms))
     }
 
-    #[cfg(all(unix, feature = "nightly"))]
+    #[cfg(feature = "nightly")]
     fn keepalive(&self) -> io::Result<Option<Duration>> {
         self.keepalive_ms().map(|o| o.map(ms2dur))
     }
