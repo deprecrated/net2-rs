@@ -85,6 +85,12 @@ fn getopt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
 pub trait TcpStreamExt {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()>;
     fn nodelay(&self) -> io::Result<bool>;
+    fn keepalive_ms(&self) -> io::Result<Option<u32>>;
+    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()>;
+    fn set_read_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+    fn read_timeout_ms(&self) -> io::Result<Option<u32>>;
+    fn set_write_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+    fn write_timeout_ms(&self) -> io::Result<Option<u32>>;
     #[cfg(feature = "nightly")]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()>;
     #[cfg(feature = "nightly")]
@@ -163,17 +169,27 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(all(unix, feature = "nightly"))]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
-        try!(setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
-                    keepalive.is_some() as c_int));
-        if let Some(dur) = keepalive {
-            try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
-                        dur.as_secs() as c_int));
-        }
-        Ok(())
+        self.set_keepalive_ms(keepalive.map(dur2ms))
     }
 
     #[cfg(all(unix, feature = "nightly"))]
     fn keepalive(&self) -> io::Result<Option<Duration>> {
+        self.keepalive_ms().map(|o| o.map(ms2dur))
+    }
+
+    #[cfg(unix)]
+    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
+        try!(setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
+                    keepalive.is_some() as c_int));
+        if let Some(dur) = keepalive {
+            try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
+                        dur as c_int));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    fn keepalive_ms(&self) -> io::Result<Option<u32>> {
         let keepalive = try!(getopt::<c_int>(self.as_sock(), libc::SOL_SOCKET,
                                              libc::SO_KEEPALIVE));
         if keepalive == 0 {
@@ -181,12 +197,12 @@ impl TcpStreamExt for TcpStream {
         }
         let secs = try!(getopt::<c_int>(self.as_sock(), libc::IPPROTO_TCP,
                                         KEEPALIVE_OPTION));
-        Ok(Some(Duration::new(secs as u64, 0)))
+        Ok(Some(secs as u32))
     }
 
-    #[cfg(all(windows, feature = "nightly"))]
-    fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
-        let ms = dur2timeout(keepalive);
+    #[cfg(windows)]
+    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
+        let ms = keepalive.unwrap_or(libc::INFINITE);
         let ka = tcp_keepalive {
             onoff: keepalive.is_some() as libc::c_ulong,
             keepalivetime: ms as libc::c_ulong,
@@ -205,8 +221,8 @@ impl TcpStreamExt for TcpStream {
         }
     }
 
-    #[cfg(all(windows, feature = "nightly"))]
-    fn keepalive(&self) -> io::Result<Option<Duration>> {
+    #[cfg(windows)]
+    fn keepalive_ms(&self) -> io::Result<Option<u32>> {
         let mut ka = tcp_keepalive {
             onoff: 0,
             keepalivetime: 0,
@@ -227,33 +243,49 @@ impl TcpStreamExt for TcpStream {
             if ka.onoff == 0 {
                 None
             } else {
-                timeout2dur(ka.keepaliveinterval as libc::DWORD)
+                timeout2ms(ka.keepaliveinterval as libc::DWORD)
             }
         })
     }
 
+    fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO,
+               ms2timeout(dur))
+    }
+
+    fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .map(timeout2ms)
+    }
+
+    fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO,
+               ms2timeout(dur))
+    }
+
+    fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .map(timeout2ms)
+    }
+
     #[cfg(feature = "nightly")]
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO,
-               dur2timeout(dur))
+        self.set_read_timeout_ms(dur.map(dur2ms))
     }
 
     #[cfg(feature = "nightly")]
     fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO)
-            .map(timeout2dur)
+        self.read_timeout_ms().map(|o| o.map(ms2dur))
     }
 
     #[cfg(feature = "nightly")]
     fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO,
-               dur2timeout(dur))
+        self.set_write_timeout_ms(dur.map(dur2ms))
     }
 
     #[cfg(feature = "nightly")]
     fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO)
-            .map(timeout2dur)
+        self.write_timeout_ms().map(|o| o.map(ms2dur))
     }
 
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -274,40 +306,49 @@ impl TcpStreamExt for TcpStream {
     }
 }
 
-#[cfg(all(unix, feature = "nightly"))]
-fn dur2timeout(dur: Option<Duration>) -> libc::timeval {
+#[cfg(unix)]
+fn ms2timeout(dur: Option<u32>) -> libc::timeval {
     // TODO: be more rigorous
     match dur {
-        Some(d) => libc::timeval { tv_sec: d.as_secs() as libc::time_t, tv_usec: 0 },
+        Some(d) => libc::timeval {
+            tv_sec: (d / 1000) as libc::time_t,
+            tv_usec: (d % 1000) as libc::suseconds_t,
+        },
         None => libc::timeval { tv_sec: 0, tv_usec: 0 },
     }
 }
 
-#[cfg(all(unix, feature = "nightly"))]
-fn timeout2dur(dur: libc::timeval) -> Option<Duration> {
+#[cfg(unix)]
+fn timeout2ms(dur: libc::timeval) -> Option<u32> {
     if dur.tv_sec == 0 && dur.tv_usec == 0 {
         None
     } else {
-        Some(Duration::new(dur.tv_sec as u64, 0))
+        Some(dur.tv_sec as u32 * 1000 + dur.tv_usec as u32 / 1000)
     }
 }
 
-#[cfg(all(windows, feature = "nightly"))]
-fn dur2timeout(dur: Option<Duration>) -> libc::DWORD {
-    // TODO: be more rigorous
-    match dur {
-        Some(d) => (d.as_secs() * 1000) as libc::DWORD,
-        None => 0,
-    }
+#[cfg(windows)]
+fn ms2timeout(dur: Option<u32>) -> libc::DWORD {
+    dur.unwrap_or(0)
 }
 
-#[cfg(all(windows, feature = "nightly"))]
-fn timeout2dur(dur: libc::DWORD) -> Option<Duration> {
+#[cfg(windows)]
+fn timeout2ms(dur: libc::DWORD) -> Option<u32> {
     if dur == 0 {
         None
     } else {
-        Some(Duration::new((dur / 1000) as u64, 0))
+        Some(dur)
     }
+}
+
+#[cfg(feature = "nightly")]
+fn ms2dur(ms: u32) -> Duration {
+    Duration::new((ms as u64) / 1000, (ms as u32) % 1000 * 1_000_000)
+}
+
+#[cfg(feature = "nightly")]
+fn dur2ms(dur: Duration) -> u32 {
+    (dur.as_secs() as u32 * 1000) + (dur.subsec_nanos() / 1_000_000)
 }
 
 fn int2bool(n: c_int) -> bool {
