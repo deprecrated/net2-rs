@@ -10,47 +10,24 @@
 
 #![allow(bad_style)]
 
+extern crate kernel32;
+extern crate winapi;
+extern crate ws2_32;
+
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::windows::io::FromRawSocket;
 use std::sync::{Once, ONCE_INIT};
-use libc::{self, SOCKET, WORD, c_int};
+
+use self::winapi::*;
+use self::ws2_32::*;
+use self::kernel32::*;
+
+const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
+const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
 mod impls;
-
-const WSADESCRIPTION_LEN: usize = 256;
-const WSASYS_STATUS_LEN: usize = 128;
-
-#[repr(C)]
-#[cfg(target_arch = "x86")]
-struct WSADATA {
-    wVersion: WORD,
-    wHighVersion: WORD,
-    szDescription: [u8; WSADESCRIPTION_LEN + 1],
-    szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
-    iMaxSockets: u16,
-    iMaxUdpDg: u16,
-    lpVendorInfo: *mut u8,
-}
-#[repr(C)]
-#[cfg(target_arch = "x86_64")]
-struct WSADATA {
-    wVersion: WORD,
-    wHighVersion: WORD,
-    iMaxSockets: u16,
-    iMaxUdpDg: u16,
-    lpVendorInfo: *mut u8,
-    szDescription: [u8; WSADESCRIPTION_LEN + 1],
-    szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
-}
-
-#[link(name = "ws2_32")]
-extern "system" {
-    fn WSAStartup(wVersionRequested: WORD,
-                  lpWSAData: *mut WSADATA) -> c_int;
-    fn WSACleanup() -> c_int;
-}
 
 fn init() {
     static INIT: Once = ONCE_INIT;
@@ -59,7 +36,7 @@ fn init() {
         let mut data: WSADATA = mem::zeroed();
         let ret = WSAStartup(0x202, &mut data);
         assert_eq!(ret, 0);
-        libc::atexit(shutdown);
+        ::libc::atexit(shutdown);
     });
 
     extern fn shutdown() {
@@ -74,15 +51,15 @@ pub struct Socket {
 impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         init();
-        unsafe {
-            // TODO: Call WSASocket to set other fancy things
-            let socket = libc::socket(family, ty, 0);
-            if socket != !0 {
-                Ok(Socket { socket: socket })
-            } else {
-                Err(io::Error::last_os_error())
+        let socket = try!(unsafe {
+            match WSASocketW(family, ty, 0, 0 as *mut _, 0,
+                             WSA_FLAG_OVERLAPPED) {
+                INVALID_SOCKET => Err(io::Error::last_os_error()),
+                n => Ok(Socket { socket: n }),
             }
-        }
+        });
+        try!(socket.set_no_inherit());
+        Ok(socket)
     }
 
     pub fn raw(&self) -> SOCKET { self.socket }
@@ -104,6 +81,12 @@ impl Socket {
     pub fn into_udp_socket(self) -> UdpSocket {
         unsafe { UdpSocket::from_raw_socket(self.into_socket()) }
     }
+
+    fn set_no_inherit(&self) -> io::Result<()> {
+        ::cvt_win(unsafe {
+            SetHandleInformation(self.socket as HANDLE, HANDLE_FLAG_INHERIT, 0)
+        }).map(|_| ())
+    }
 }
 
 impl ::FromInner for Socket {
@@ -116,7 +99,7 @@ impl ::FromInner for Socket {
 impl Drop for Socket {
     fn drop(&mut self) {
         unsafe {
-            let _ = libc::closesocket(self.socket);
+            let _ = closesocket(self.socket);
         }
     }
 }
