@@ -82,59 +82,330 @@ fn getopt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
     }
 }
 
+/// Extension methods for the standard [`TcpStream` type][link] in `std::net`.
+///
+/// [link]: https://doc.rust-lang.org/std/net/struct.TcpStream.html
 pub trait TcpStreamExt {
+    /// Sets the value of the `TCP_NODELAY` option on this socket.
+    ///
+    /// If set, this option disables the Nagle algorithm. This means that
+    /// segments are always sent as soon as possible, even if there is only a
+    /// small amount of data. When not set, data is buffered until there is a
+    /// sufficient amount to send out, thereby avoiding the frequent sending of
+    /// small packets.
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()>;
+
+    /// Gets the value of the `TCP_NODELAY` option on this socket.
+    ///
+    /// For more information about this option, see [`set_nodelay`][link].
+    ///
+    /// [link]: #tymethod.set_nodelay
     fn nodelay(&self) -> io::Result<bool>;
-    fn keepalive_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Sets whether keepalive messages are enabled to be sent on this socket.
+    ///
+    /// On Unix, this option will set the `SO_KEEPALIVE` as well as the
+    /// `TCP_KEEPALIVE` or `TCP_KEEPIDLE` option (depending on your platform).
+    /// On Windows, this will set the `SIO_KEEPALIVE_VALS` option.
+    ///
+    /// If `None` is specified then keepalive messages are disabled, otherwise
+    /// the number of milliseconds specified will be the time to remain idle
+    /// before sending a TCP keepalive probe.
+    ///
+    /// Some platforms specify this value in seconds, so sub-second millisecond
+    /// specifications may be omitted.
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()>;
-    fn set_read_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
-    fn read_timeout_ms(&self) -> io::Result<Option<u32>>;
-    fn set_write_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
-    fn write_timeout_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Returns whether keepalive messages are enabled on this socket, and if so
+    /// the amount of milliseconds between them.
+    ///
+    /// For more information about this option, see [`set_keepalive_ms`][link].
+    ///
+    /// [link]: #tymethod.set_keepalive_ms
+    fn keepalive_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Sets whether keepalive messages are enabled to be sent on this socket.
+    ///
+    /// On Unix, this option will set the `SO_KEEPALIVE` as well as the
+    /// `TCP_KEEPALIVE` or `TCP_KEEPIDLE` option (depending on your platform).
+    /// On Windows, this will set the `SIO_KEEPALIVE_VALS` option.
+    ///
+    /// If `None` is specified then keepalive messages are disabled, otherwise
+    /// the duration specified will be the time to remain idle before sending a
+    /// TCP keepalive probe.
+    ///
+    /// Some platforms specify this value in seconds, so sub-second
+    /// specifications may be omitted.
     #[cfg(feature = "nightly")]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()>;
+
+    /// Returns whether keepalive messages are enabled on this socket, and if so
+    /// the duration of time between them.
+    ///
+    /// For more information about this option, see [`set_keepalive`][link].
+    ///
+    /// [link]: #tymethod.set_keepalive
     #[cfg(feature = "nightly")]
     fn keepalive(&self) -> io::Result<Option<Duration>>;
+
+    /// Sets the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout, in milliseconds, of how long calls to
+    /// this socket's `read` function will wait before returning a timeout. A
+    /// value of `None` means that no read timeout should be specified and
+    /// otherwise `Some` indicates the number of milliseconds for the timeout.
+    fn set_read_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+
+    /// Sets the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout of how long calls to this socket's
+    /// `read` function will wait before returning a timeout. A value of `None`
+    /// means that no read timeout should be specified and otherwise `Some`
+    /// indicates the number of duration of the timeout.
     #[cfg(feature = "nightly")]
     fn set_read_timeout(&self, val: Option<Duration>) -> io::Result<()>;
+
+    /// Gets the value of the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_read_timeout_ms`][link].
+    ///
+    /// [link]: #tymethod.set_read_timeout_ms
+    fn read_timeout_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Gets the value of the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_read_timeout`][link].
+    ///
+    /// [link]: #tymethod.set_read_timeout
     #[cfg(feature = "nightly")]
     fn read_timeout(&self) -> io::Result<Option<Duration>>;
+
+    /// Sets the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout, in milliseconds, of how long calls to
+    /// this socket's `write` function will wait before returning a timeout. A
+    /// value of `None` means that no read timeout should be specified and
+    /// otherwise `Some` indicates the number of milliseconds for the timeout.
+    fn set_write_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+
+    /// Sets the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout of how long calls to this socket's
+    /// `write` function will wait before returning a timeout. A value of `None`
+    /// means that no read timeout should be specified and otherwise `Some`
+    /// indicates the duration of the timeout.
     #[cfg(feature = "nightly")]
     fn set_write_timeout(&self, val: Option<Duration>) -> io::Result<()>;
+
+    /// Gets the value of the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_write_timeout_ms`][link].
+    ///
+    /// [link]: #tymethod.set_write_timeout_ms
+    fn write_timeout_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Gets the value of the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_write_timeout`][link].
+    ///
+    /// [link]: #tymethod.set_write_timeout
     #[cfg(feature = "nightly")]
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
+
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This value sets the time-to-live field that is used in every packet sent
+    /// from this socket.
     fn set_ttl(&self, ttl: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TTL` option for this socket.
+    ///
+    /// For more information about this option, see [`set_ttl`][link].
+    ///
+    /// [link]: #tymethod.set_ttl
     fn ttl(&self) -> io::Result<u32>;
+
+    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
+    ///
+    /// If this is set to `true` then the socket is restricted to sending and
+    /// receiving IPv6 packets only. In this case two IPv4 and IPv6 applications
+    /// can bind the same port at the same time.
+    ///
+    /// If this is set to `false` then the socket can be used to send and
+    /// receive packets from an IPv4-mapped IPv6 address.
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
+    ///
+    /// For more information about this option, see [`set_only_v6`][link].
+    ///
+    /// [link]: #tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
 }
 
+/// Extension methods for the standard [`TcpListener` type][link] in `std::net`.
+///
+/// [link]: https://doc.rust-lang.org/std/net/struct.TcpListener.html
 pub trait TcpListenerExt {
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This is the same as [`TcpStreamExt::set_ttl`][other].
+    ///
+    /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn set_ttl(&self, ttl: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TTL` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_ttl`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn ttl(&self) -> io::Result<u32>;
+
+    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_only_v6`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_only_v6`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
 }
 
+/// Extension methods for the standard [`UdpSocket` type][link] in `std::net`.
+///
+/// [link]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html
 pub trait UdpSocketExt {
+    /// Sets the value of the `SO_BROADCAST` option for this socket.
+    ///
+    /// When enabled, this socket is allowed to send packets to a broadcast
+    /// address.
     fn set_broadcast(&self, broadcast: bool) -> io::Result<()>;
+
+    /// Gets the value of the `SO_BROADCAST` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`set_broadcast`][link].
+    ///
+    /// [link]: #tymethod.set_broadcast
     fn broadcast(&self) -> io::Result<bool>;
+
+    /// Sets the value of the `IP_MULTICAST_LOOP` option for this socket.
+    ///
+    /// If enabled, multicast packets will be looped back to the local socket.
+    /// Note that this may not have any affect on IPv6 sockets.
     fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IP_MULTICAST_LOOP` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`set_multicast_loop_v4`][link].
+    ///
+    /// [link]: #tymethod.set_multicast_loop_v4
     fn multicast_loop_v4(&self) -> io::Result<bool>;
+
+    /// Sets the value of the `IP_MULTICAST_TTL` option for this socket.
+    ///
+    /// Indicates the time-to-live value of outgoing multicast packets for
+    /// this socket. The default value is 1 which means that multicast packets
+    /// don't leave the local network unless explicitly requested.
+    ///
+    /// Note that this may not have any affect on IPv6 sockets.
     fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IP_MULTICAST_TTL` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`set_multicast_ttl_v4`][link].
+    ///
+    /// [link]: #tymethod.set_multicast_ttl_v4
     fn multicast_ttl_v4(&self) -> io::Result<u32>;
+
+    /// Sets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
+    ///
+    /// Controls whether this socket sees the multicast packets it sends itself.
+    /// Note that this may not have any affect on IPv4 sockets.
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`set_multicast_loop_v6`][link].
+    ///
+    /// [link]: #tymethod.set_multicast_loop_v6
     fn multicast_loop_v6(&self) -> io::Result<bool>;
+
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This is the same as [`TcpStreamExt::set_ttl`][other].
+    ///
+    /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn set_ttl(&self, ttl: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TTL` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_ttl`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn ttl(&self) -> io::Result<u32>;
+
+    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_only_v6`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_only_v6`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
+
+    /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
+    ///
+    /// This function specifies a new multicast group for this socket to join.
+    /// The address must be a valid multicast address, and `interface` is the
+    /// address of the local interface with which the system should join the
+    /// multicast group. If it's equal to `INADDR_ANY` then an appropriate
+    /// interface is chosen by the system.
     fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
                          -> io::Result<()>;
+
+    /// Executes an operation of the `IPV6_ADD_MEMBERSHIP` type.
+    ///
+    /// This function specifies a new multicast group for this socket to join.
+    /// The address must be a valid multicast address, and `interface` is the
+    /// index of the interface to join/leave (or 0 to indicate any interface).
     fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                          -> io::Result<()>;
+
+    /// Executes an operation of the `IP_DROP_MEMBERSHIP` type.
+    ///
+    /// For more information about this option, see
+    /// [`join_multicast_v4`][link].
+    ///
+    /// [link]: #tymethod.join_multicast_v4
     fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
                           -> io::Result<()>;
+
+    /// Executes an operation of the `IPV6_DROP_MEMBERSHIP` type.
+    ///
+    /// For more information about this option, see
+    /// [`join_multicast_v6`][link].
+    ///
+    /// [link]: #tymethod.join_multicast_v6
     fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                           -> io::Result<()>;
 }
@@ -491,35 +762,65 @@ impl TcpListenerExt for TcpListener {
 }
 
 impl TcpBuilder {
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This is the same as [`TcpStreamExt::set_ttl`][other].
+    ///
+    /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
+    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
+    ///
+    /// This is the same as [`TcpStreamExt::set_only_v6`][other].
+    ///
+    /// [other]: trait.TcpStreamExt.html#tymethod.set_only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
+    /// Set value for the `SO_REUSEADDR` option on this socket.
+    ///
+    /// This indicates that futher calls to `bind` may allow reuse of local
+    /// addresses. For IPv4 sockets this means that a socket may bind even when
+    /// there's a socket already listening on this port.
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR, reuse as c_int)
-            .map(|()| self)
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
+               reuse as c_int).map(|()| self)
     }
 }
 
 impl UdpBuilder {
+    /// Sets the value for the `IP_TTL` option on this socket.
+    ///
+    /// This is the same as [`TcpStreamExt::set_ttl`][other].
+    ///
+    /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
+    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
+    ///
+    /// This is the same as [`TcpStream::only_v6`][other].
+    ///
+    /// [other]: struct.TcpBuilder.html#method.only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
+    /// Set value for the `SO_REUSEADDR` option on this socket.
+    ///
+    /// This is the same as [`TcpBuilder::reuse_address`][other].
+    ///
+    /// [other]: struct.TcpBuilder.html#method.reuse_address
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR, reuse as c_int)
-            .map(|()| self)
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
+               reuse as c_int).map(|()| self)
     }
 }

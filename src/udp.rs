@@ -17,6 +17,9 @@ use libc;
 use IntoInner;
 use socket::Socket;
 
+/// An "in progress" UDP socket which has not yet been connected.
+///
+/// Allows configuration of a socket before the socket is connected.
 pub struct UdpBuilder {
     socket: RefCell<Option<Socket>>,
 }

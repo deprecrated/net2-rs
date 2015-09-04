@@ -8,8 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(test, deny(warnings))]
+//! Extensions to `std::net` networking types.
+//!
+//! This crate implements a number of extensions to the standard `std::net`
+//! networking types, hopefully being slated for inclusion into the standard
+//! library in the future. The goal of this crate is to expose all sorts of
+//! cross-platform and platform-specific configuration options of UDP/TCP
+//! sockets. System APIs are wrapped with as thin a layer as possible instead of
+//! bundling multiple actions into one API call.
+//!
+//! More information about the design of this crate can be found in the
+//! [associated rfc][rfc]
+//!
+//! [rfc]: https://github.com/rust-lang/rfcs/pull/1158
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use net2::TcpBuilder;
+//!
+//! let tcp = TcpBuilder::new_v4().unwrap();
+//! tcp.reuse_address(true).unwrap()
+//!    .only_v6(false).unwrap();
+//!
+//! let mut stream = tcp.connect("127.0.0.1:80").unwrap();
+//!
+//! // use `stream` as a TcpStream
+//! ```
+
 #![doc(html_root_url = "http://alexcrichton.com/net2-rs")]
+#![deny(missing_docs, warnings)]
 
 extern crate libc;
 
