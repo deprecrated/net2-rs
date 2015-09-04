@@ -10,19 +10,15 @@
 
 #![allow(bad_style)]
 
-extern crate kernel32;
-extern crate winapi;
-extern crate ws2_32;
-
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::windows::io::FromRawSocket;
 use std::sync::{Once, ONCE_INIT};
 
-use self::winapi::*;
-use self::ws2_32::*;
-use self::kernel32::*;
+use winapi::*;
+use ws2_32::*;
+use kernel32::*;
 
 const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
 const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;

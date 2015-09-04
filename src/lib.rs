@@ -39,7 +39,11 @@
 #![doc(html_root_url = "http://alexcrichton.com/net2-rs")]
 #![deny(missing_docs, warnings)]
 
+extern crate kernel32;
 extern crate libc;
+extern crate winapi;
+extern crate ws2_32;
+#[macro_use] extern crate cfg_if;
 
 use std::io;
 use std::ops::Neg;

@@ -14,28 +14,13 @@ use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::io::FromRawFd;
 use libc::{self, c_int};
 
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "netbsd",
-          target_os = "openbsd"))]
-const FIOCLEX: libc::c_ulong = 0x20006601;
-
-#[cfg(any(all(target_os = "linux",
-              any(target_arch = "x86",
-                  target_arch = "x86_64",
-                  target_arch = "arm",
-                  target_arch = "aarch64")),
-          target_os = "android"))]
-const FIOCLEX: libc::c_ulong = 0x5451;
-
-#[cfg(all(target_os = "linux",
-          any(target_arch = "mips",
-              target_arch = "mipsel",
-              target_arch = "powerpc")))]
-const FIOCLEX: libc::c_ulong = 0x6601;
+cfg_if! {
+    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+        const FIOCLEX: libc::c_ulong = 0x5451;
+    } else {
+        const FIOCLEX: libc::c_ulong = 0x20006601;
+    }
+}
 
 extern {
     fn ioctl(fd: libc::c_int, req: libc::c_ulong, ...) -> libc::c_int;

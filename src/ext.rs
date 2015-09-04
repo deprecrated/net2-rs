@@ -13,6 +13,7 @@
 use std::io;
 use std::mem;
 use std::net::{TcpStream, TcpListener, UdpSocket, Ipv4Addr, Ipv6Addr};
+
 use libc::{self, c_int, socklen_t, c_void, c_uint};
 
 use {TcpBuilder, UdpBuilder};
@@ -23,6 +24,7 @@ use {TcpBuilder, UdpBuilder};
 #[cfg(unix)] use std::os::unix::prelude::*;
 #[cfg(windows)] type Socket = libc::SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
+#[cfg(windows)] use ws2_32::*;
 
 #[cfg(target_os = "linux")] const IPV6_MULTICAST_LOOP: c_int = 19;
 #[cfg(target_os = "macos")] const IPV6_MULTICAST_LOOP: c_int = 11;
@@ -30,19 +32,6 @@ use {TcpBuilder, UdpBuilder};
 #[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
 #[cfg(target_os = "macos")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
-
-#[cfg(windows)]
-extern "system" {
-    fn WSAIoctl(s: libc::SOCKET,
-                dwIoControlCode: libc::DWORD,
-                lpvInBuffer: libc::LPVOID,
-                cbInBuffer: libc::DWORD,
-                lpvOutBuffer: libc::LPVOID,
-                cbOutBuffer: libc::DWORD,
-                lpcbBytesReturned: libc::LPDWORD,
-                lpOverlapped: *mut c_void,
-                lpCompletionRoutine: *mut c_void) -> c_int;
-}
 
 #[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
 #[cfg(windows)]
@@ -53,6 +42,7 @@ struct tcp_keepalive {
     keepaliveinterval: libc::c_ulong,
 }
 
+#[cfg(not(windows))]
 extern "system" {
     fn getsockopt(sockfd: Socket,
                   level: c_int,
@@ -423,10 +413,14 @@ impl<T: AsRawSocket> AsSock for T {
     fn as_sock(&self) -> Socket { self.as_raw_socket() }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
-#[cfg(all(not(target_os = "macos"), not(target_os = "ios"), unix))]
-const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
+cfg_if! {
+    if #[cfg(any(target_os = "macos", target_os = "ios"))] {
+        const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
+    } else if #[cfg(unix)] {
+        const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
+    } else {
+    }
+}
 
 impl TcpStreamExt for TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
@@ -488,7 +482,7 @@ impl TcpStreamExt for TcpStream {
                                0,
                                0 as *mut _,
                                0 as *mut _,
-                               0 as *mut _)).map(|_| ())
+                               None)).map(|_| ())
         }
     }
 
@@ -508,7 +502,7 @@ impl TcpStreamExt for TcpStream {
                                     mem::size_of_val(&ka) as libc::DWORD,
                                     0 as *mut _,
                                     0 as *mut _,
-                                    0 as *mut _)));
+                                    None)));
         }
         Ok({
             if ka.onoff == 0 {
