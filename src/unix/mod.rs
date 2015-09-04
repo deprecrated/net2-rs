@@ -14,6 +14,33 @@ use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::io::FromRawFd;
 use libc::{self, c_int};
 
+#[cfg(any(target_os = "macos",
+          target_os = "ios",
+          target_os = "freebsd",
+          target_os = "dragonfly",
+          target_os = "bitrig",
+          target_os = "netbsd",
+          target_os = "openbsd"))]
+const FIOCLEX: libc::c_ulong = 0x20006601;
+
+#[cfg(any(all(target_os = "linux",
+              any(target_arch = "x86",
+                  target_arch = "x86_64",
+                  target_arch = "arm",
+                  target_arch = "aarch64")),
+          target_os = "android"))]
+const FIOCLEX: libc::c_ulong = 0x5451;
+
+#[cfg(all(target_os = "linux",
+          any(target_arch = "mips",
+              target_arch = "mipsel",
+              target_arch = "powerpc")))]
+const FIOCLEX: libc::c_ulong = 0x6601;
+
+extern {
+    fn ioctl(fd: libc::c_int, req: libc::c_ulong, ...) -> libc::c_int;
+}
+
 mod impls;
 
 pub struct Socket {
@@ -24,7 +51,7 @@ impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             let fd = try!(::cvt(libc::socket(family, ty, 0)));
-            // TODO: set cloexec
+            ioctl(fd, FIOCLEX);
             Ok(Socket { fd: fd })
         }
     }
