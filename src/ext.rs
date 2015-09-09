@@ -28,10 +28,14 @@ use {TcpBuilder, UdpBuilder};
 
 #[cfg(target_os = "linux")] const IPV6_MULTICAST_LOOP: c_int = 19;
 #[cfg(target_os = "macos")] const IPV6_MULTICAST_LOOP: c_int = 11;
+#[cfg(target_os = "freebsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
+#[cfg(target_os = "dragonfly")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
 #[cfg(target_os = "macos")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
+#[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
+#[cfg(target_os = "dragonfly")] const IPV6_V6ONLY: c_int = 27;
 
 #[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
 #[cfg(windows)]
