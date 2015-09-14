@@ -13,10 +13,13 @@
 use std::io;
 use std::mem;
 use std::net::{TcpStream, TcpListener, UdpSocket, Ipv4Addr, Ipv6Addr};
+use std::net::ToSocketAddrs;
 
 use libc::{self, c_int, socklen_t, c_void, c_uint};
 
-use {TcpBuilder, UdpBuilder};
+use {TcpBuilder, UdpBuilder, FromInner};
+use sys;
+use socket;
 
 #[cfg(feature = "nightly")] use std::time::Duration;
 
@@ -235,6 +238,17 @@ pub trait TcpStreamExt {
     ///
     /// [link]: #tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
+
+    /// Executes a `connect` operation on this socket, establishing a connection
+    /// to the host specified by `addr`.
+    ///
+    /// Note that this normally does not need to be called on a `TcpStream`,
+    /// it's typically automatically done as part of a normal
+    /// `TcpStream::connect` function call or `TcpBuilder::connect` method call.
+    ///
+    /// This should only be necessary if an unconnected socket was extracted
+    /// from a `TcpBuilder` and then needs to be connected.
+    fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()>;
 }
 
 /// Extension methods for the standard [`TcpListener` type][link] in `std::net`.
@@ -572,6 +586,19 @@ impl TcpStreamExt for TcpStream {
 
     fn only_v6(&self) -> io::Result<bool> {
         getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+    }
+
+    fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
+        let err = io::Error::new(io::ErrorKind::Other,
+                                 "no socket addresses resolved");
+        let addrs = try!(addr.to_socket_addrs());
+        let sys = sys::Socket::from_inner(self.as_sock());
+        let sock = socket::Socket::from_inner(sys);
+        let ret = addrs.fold(Err(err), |prev, addr| {
+            prev.or_else(|_| sock.connect(&addr))
+        });
+        mem::forget(sock);
+        return ret
     }
 }
 
