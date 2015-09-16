@@ -416,6 +416,70 @@ pub trait UdpSocketExt {
     /// [link]: #tymethod.join_multicast_v6
     fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                           -> io::Result<()>;
+
+    /// Sets the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout, in milliseconds, of how long calls to
+    /// this socket's `read` function will wait before returning a timeout. A
+    /// value of `None` means that no read timeout should be specified and
+    /// otherwise `Some` indicates the number of milliseconds for the timeout.
+    fn set_read_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+
+    /// Sets the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout of how long calls to this socket's
+    /// `read` function will wait before returning a timeout. A value of `None`
+    /// means that no read timeout should be specified and otherwise `Some`
+    /// indicates the number of duration of the timeout.
+    #[cfg(feature = "nightly")]
+    fn set_read_timeout(&self, val: Option<Duration>) -> io::Result<()>;
+
+    /// Gets the value of the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_read_timeout_ms`][link].
+    ///
+    /// [link]: #tymethod.set_read_timeout_ms
+    fn read_timeout_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Gets the value of the `SO_RCVTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_read_timeout`][link].
+    ///
+    /// [link]: #tymethod.set_read_timeout
+    #[cfg(feature = "nightly")]
+    fn read_timeout(&self) -> io::Result<Option<Duration>>;
+
+    /// Sets the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout, in milliseconds, of how long calls to
+    /// this socket's `write` function will wait before returning a timeout. A
+    /// value of `None` means that no read timeout should be specified and
+    /// otherwise `Some` indicates the number of milliseconds for the timeout.
+    fn set_write_timeout_ms(&self, val: Option<u32>) -> io::Result<()>;
+
+    /// Sets the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// This option specifies the timeout of how long calls to this socket's
+    /// `write` function will wait before returning a timeout. A value of `None`
+    /// means that no read timeout should be specified and otherwise `Some`
+    /// indicates the duration of the timeout.
+    #[cfg(feature = "nightly")]
+    fn set_write_timeout(&self, val: Option<Duration>) -> io::Result<()>;
+
+    /// Gets the value of the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_write_timeout_ms`][link].
+    ///
+    /// [link]: #tymethod.set_write_timeout_ms
+    fn write_timeout_ms(&self) -> io::Result<Option<u32>>;
+
+    /// Gets the value of the `SO_SNDTIMEO` option for this socket.
+    ///
+    /// For more information about this option, see [`set_write_timeout`][link].
+    ///
+    /// [link]: #tymethod.set_write_timeout
+    #[cfg(feature = "nightly")]
+    fn write_timeout(&self) -> io::Result<Option<Duration>>;
 }
 
 trait AsSock {
@@ -738,6 +802,46 @@ impl UdpSocketExt for UdpSocket {
         };
         setopt(self.as_sock(), libc::IPPROTO_IPV6, libc::IPV6_DROP_MEMBERSHIP,
                mreq)
+    }
+
+    fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO,
+               ms2timeout(dur))
+    }
+
+    fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .map(timeout2ms)
+    }
+
+    fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO,
+               ms2timeout(dur))
+    }
+
+    fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .map(timeout2ms)
+    }
+
+    #[cfg(feature = "nightly")]
+    fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.set_read_timeout_ms(dur.map(dur2ms))
+    }
+
+    #[cfg(feature = "nightly")]
+    fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.read_timeout_ms().map(|o| o.map(ms2dur))
+    }
+
+    #[cfg(feature = "nightly")]
+    fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        self.set_write_timeout_ms(dur.map(dur2ms))
+    }
+
+    #[cfg(feature = "nightly")]
+    fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.write_timeout_ms().map(|o| o.map(ms2dur))
     }
 }
 
