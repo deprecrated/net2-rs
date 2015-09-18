@@ -30,12 +30,12 @@ use socket;
 #[cfg(windows)] use ws2_32::*;
 
 #[cfg(target_os = "linux")] const IPV6_MULTICAST_LOOP: c_int = 19;
-#[cfg(target_os = "macos")] const IPV6_MULTICAST_LOOP: c_int = 11;
+#[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "freebsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "dragonfly")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
-#[cfg(target_os = "macos")] const IPV6_V6ONLY: c_int = 27;
+#[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "dragonfly")] const IPV6_V6ONLY: c_int = 27;
@@ -920,6 +920,16 @@ impl TcpBuilder {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
                reuse as c_int).map(|()| self)
     }
+
+    /// Set value for the `SO_REUSEPORT` option on this socket.
+    ///
+    /// This indicates that futher calls to `bind` may allow reuse of local
+    /// addresses. For IPv4 sockets this means that a socket may bind even when
+    /// there's a socket already listening on this port.
+    pub fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
+               reuse as c_int).map(|()| self)
+    }
 }
 
 impl UdpBuilder {
@@ -950,6 +960,16 @@ impl UdpBuilder {
     /// [other]: struct.TcpBuilder.html#method.reuse_address
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
+               reuse as c_int).map(|()| self)
+    }
+
+    /// Set value for the `SO_REUSEPORT` option on this socket.
+    ///
+    /// This indicates that futher calls to `bind` may allow reuse of local
+    /// addresses. For IPv4 sockets this means that a socket may bind even when
+    /// there's a socket already listening on this port.
+    pub fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
+        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
                reuse as c_int).map(|()| self)
     }
 }
