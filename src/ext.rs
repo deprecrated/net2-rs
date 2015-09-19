@@ -23,9 +23,9 @@ use socket;
 
 #[cfg(feature = "nightly")] use std::time::Duration;
 
-#[cfg(unix)] type Socket = c_int;
+#[cfg(unix)] pub type Socket = c_int;
 #[cfg(unix)] use std::os::unix::prelude::*;
-#[cfg(windows)] type Socket = libc::SOCKET;
+#[cfg(windows)] pub type Socket = libc::SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(windows)] use ws2_32::*;
 
@@ -58,8 +58,8 @@ extern "system" {
                   optlen: *mut socklen_t) -> c_int;
 }
 
-fn setopt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
-                   payload: T) -> io::Result<()> {
+pub fn setopt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
+                       payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
         try!(::cvt(libc::setsockopt(sock, opt, val, payload,
@@ -482,7 +482,8 @@ pub trait UdpSocketExt {
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
 }
 
-trait AsSock {
+#[doc(hidden)]
+pub trait AsSock {
     fn as_sock(&self) -> Socket;
 }
 
@@ -920,16 +921,6 @@ impl TcpBuilder {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
                reuse as c_int).map(|()| self)
     }
-
-    /// Set value for the `SO_REUSEPORT` option on this socket.
-    ///
-    /// This indicates that futher calls to `bind` may allow reuse of local
-    /// addresses. For IPv4 sockets this means that a socket may bind even when
-    /// there's a socket already listening on this port.
-    pub fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
-               reuse as c_int).map(|()| self)
-    }
 }
 
 impl UdpBuilder {
@@ -960,16 +951,6 @@ impl UdpBuilder {
     /// [other]: struct.TcpBuilder.html#method.reuse_address
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
-               reuse as c_int).map(|()| self)
-    }
-
-    /// Set value for the `SO_REUSEPORT` option on this socket.
-    ///
-    /// This indicates that futher calls to `bind` may allow reuse of local
-    /// addresses. For IPv4 sockets this means that a socket may bind even when
-    /// there's a socket already listening on this port.
-    pub fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
                reuse as c_int).map(|()| self)
     }
 }
