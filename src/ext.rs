@@ -249,6 +249,13 @@ pub trait TcpStreamExt {
     /// This should only be necessary if an unconnected socket was extracted
     /// from a `TcpBuilder` and then needs to be connected.
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()>;
+
+    /// Get the value of the `SO_ERROR` option on this socket.
+    ///
+    /// This will retrieve the stored error in the underlying socket, clearing
+    /// the field in the process. This can be useful for checking errors between
+    /// calls.
+    fn take_error(&self) -> io::Result<Option<io::Error>>;
 }
 
 /// Extension methods for the standard [`TcpListener` type][link] in `std::net`.
@@ -285,6 +292,13 @@ pub trait TcpListenerExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
+
+    /// Get the value of the `SO_ERROR` option on this socket.
+    ///
+    /// This will retrieve the stored error in the underlying socket, clearing
+    /// the field in the process. This can be useful for checking errors between
+    /// calls.
+    fn take_error(&self) -> io::Result<Option<io::Error>>;
 }
 
 /// Extension methods for the standard [`UdpSocket` type][link] in `std::net`.
@@ -480,6 +494,13 @@ pub trait UdpSocketExt {
     /// [link]: #tymethod.set_write_timeout
     #[cfg(feature = "nightly")]
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
+
+    /// Get the value of the `SO_ERROR` option on this socket.
+    ///
+    /// This will retrieve the stored error in the underlying socket, clearing
+    /// the field in the process. This can be useful for checking errors between
+    /// calls.
+    fn take_error(&self) -> io::Result<Option<io::Error>>;
 }
 
 #[doc(hidden)]
@@ -665,6 +686,10 @@ impl TcpStreamExt for TcpStream {
         mem::forget(sock);
         return ret
     }
+
+    fn take_error(&self) -> io::Result<Option<io::Error>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
 }
 
 #[cfg(unix)]
@@ -714,6 +739,14 @@ fn dur2ms(dur: Duration) -> u32 {
 
 fn int2bool(n: c_int) -> bool {
     if n == 0 {false} else {true}
+}
+
+fn int2err(n: c_int) -> Option<io::Error> {
+    if n == 0 {
+        None
+    } else {
+        Some(io::Error::from_raw_os_error(n as i32))
+    }
 }
 
 impl UdpSocketExt for UdpSocket {
@@ -844,6 +877,10 @@ impl UdpSocketExt for UdpSocket {
     fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.write_timeout_ms().map(|o| o.map(ms2dur))
     }
+
+    fn take_error(&self) -> io::Result<Option<io::Error>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
 }
 
 fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
@@ -889,6 +926,10 @@ impl TcpListenerExt for TcpListener {
     fn only_v6(&self) -> io::Result<bool> {
         getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
     }
+
+    fn take_error(&self) -> io::Result<Option<io::Error>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
 }
 
 impl TcpBuilder {
@@ -921,6 +962,15 @@ impl TcpBuilder {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
                reuse as c_int).map(|()| self)
     }
+
+    /// Get the value of the `SO_ERROR` option on this socket.
+    ///
+    /// This will retrieve the stored error in the underlying socket, clearing
+    /// the field in the process. This can be useful for checking errors between
+    /// calls.
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
 }
 
 impl UdpBuilder {
@@ -952,5 +1002,14 @@ impl UdpBuilder {
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
                reuse as c_int).map(|()| self)
+    }
+
+    /// Get the value of the `SO_ERROR` option on this socket.
+    ///
+    /// This will retrieve the stored error in the underlying socket, clearing
+    /// the field in the process. This can be useful for checking errors between
+    /// calls.
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
     }
 }
