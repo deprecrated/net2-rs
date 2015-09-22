@@ -680,7 +680,7 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
-        connect(self.as_sock(), addr)
+        do_connect(self.as_sock(), addr)
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -879,11 +879,11 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
-        connect(self.as_sock(), addr)
+        do_connect(self.as_sock(), addr)
     }
 }
 
-fn connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
+fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
     let err = io::Error::new(io::ErrorKind::Other,
                              "no socket addresses resolved");
     let addrs = try!(addr.to_socket_addrs());
