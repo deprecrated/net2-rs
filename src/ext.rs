@@ -501,6 +501,11 @@ pub trait UdpSocketExt {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     fn take_error(&self) -> io::Result<Option<io::Error>>;
+
+    /// Connects this UDP socket to a remote address, allowing the `send` and
+    /// `recv` syscalls to be used to send data and also applies filters to only
+    /// receive data from the specified address.
+    fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()>;
 }
 
 #[doc(hidden)]
@@ -675,16 +680,7 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
-        let err = io::Error::new(io::ErrorKind::Other,
-                                 "no socket addresses resolved");
-        let addrs = try!(addr.to_socket_addrs());
-        let sys = sys::Socket::from_inner(self.as_sock());
-        let sock = socket::Socket::from_inner(sys);
-        let ret = addrs.fold(Err(err), |prev, addr| {
-            prev.or_else(|_| sock.connect(&addr))
-        });
-        mem::forget(sock);
-        return ret
+        connect(self.as_sock(), addr)
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -881,6 +877,23 @@ impl UdpSocketExt for UdpSocket {
     fn take_error(&self) -> io::Result<Option<io::Error>> {
         getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
     }
+
+    fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+        connect(self.as_sock(), addr)
+    }
+}
+
+fn connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
+    let err = io::Error::new(io::ErrorKind::Other,
+                             "no socket addresses resolved");
+    let addrs = try!(addr.to_socket_addrs());
+    let sys = sys::Socket::from_inner(sock);
+    let sock = socket::Socket::from_inner(sys);
+    let ret = addrs.fold(Err(err), |prev, addr| {
+        prev.or_else(|_| sock.connect(&addr))
+    });
+    mem::forget(sock);
+    return ret
 }
 
 fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
