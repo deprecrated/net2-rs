@@ -46,7 +46,7 @@ cfg_if! {
     } else if #[cfg(any(target_os = "linux", target_os = "android"))] {
         const FIONBIO: c_int = 0x5421;
     } else {
-        const FIONBIO: c_int = 0x8004667e;
+        const FIONBIO: libc::c_ulong = 0x8004667e;
     }
 }
 
