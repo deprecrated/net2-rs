@@ -950,7 +950,7 @@ fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as libc::c_ulong;
     ::cvt(unsafe {
         libc::ioctlsocket(sock, FIONBIO, &mut nonblocking)
-    })
+    }).map(|_| ())
 }
 
 fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
