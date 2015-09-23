@@ -40,6 +40,16 @@ use socket;
 #[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "dragonfly")] const IPV6_V6ONLY: c_int = 27;
 
+cfg_if! {
+    if #[cfg(windows)] {
+        use libc::FIONBIO;
+    } else if #[cfg(any(target_os = "linux", target_os = "android"))] {
+        const FIONBIO: c_int = 0x5421;
+    } else {
+        const FIONBIO: c_int = 0x8004667e;
+    }
+}
+
 #[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
 #[cfg(windows)]
 #[repr(C)]
@@ -256,6 +266,12 @@ pub trait TcpStreamExt {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     fn take_error(&self) -> io::Result<Option<io::Error>>;
+
+    /// Moves this TCP stream into or out of nonblocking mode.
+    ///
+    /// On Unix this corresponds to calling fcntl, and on Windows this
+    /// corresponds to calling ioctlsocket.
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
 }
 
 /// Extension methods for the standard [`TcpListener` type][link] in `std::net`.
@@ -299,6 +315,14 @@ pub trait TcpListenerExt {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     fn take_error(&self) -> io::Result<Option<io::Error>>;
+
+    /// Moves this TCP listener into or out of nonblocking mode.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_nonblocking`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_nonblocking
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
 }
 
 /// Extension methods for the standard [`UdpSocket` type][link] in `std::net`.
@@ -506,6 +530,14 @@ pub trait UdpSocketExt {
     /// `recv` syscalls to be used to send data and also applies filters to only
     /// receive data from the specified address.
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()>;
+
+    /// Moves this UDP socket into or out of nonblocking mode.
+    ///
+    /// For more information about this option, see
+    /// [`TcpStreamExt::set_nonblocking`][link].
+    ///
+    /// [link]: trait.TcpStreamExt.html#tymethod.set_nonblocking
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
 }
 
 #[doc(hidden)]
@@ -685,6 +717,10 @@ impl TcpStreamExt for TcpStream {
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
         getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
+
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        set_nonblocking(self.as_sock(), nonblocking)
     }
 }
 
@@ -881,6 +917,10 @@ impl UdpSocketExt for UdpSocket {
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         do_connect(self.as_sock(), addr)
     }
+
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        set_nonblocking(self.as_sock(), nonblocking)
+    }
 }
 
 fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
@@ -894,6 +934,23 @@ fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
     });
     mem::forget(sock);
     return ret
+}
+
+#[cfg(unix)]
+fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
+    use libc::funcs::bsd44::ioctl;
+    let mut nonblocking = nonblocking as libc::c_ulong;
+    ::cvt(unsafe {
+        ioctl(sock, FIONBIO, &mut nonblocking)
+    }).map(|_| ())
+}
+
+#[cfg(windows)]
+fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
+    let mut nonblocking = nonblocking as libc::c_ulong;
+    ::cvt(unsafe {
+        libc::ioctlsocket(sock, FIONBIO, &mut nonblocking)
+    })
 }
 
 fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
@@ -942,6 +999,10 @@ impl TcpListenerExt for TcpListener {
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
         getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+    }
+
+    fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        set_nonblocking(self.as_sock(), nonblocking)
     }
 }
 
