@@ -589,7 +589,7 @@ impl TcpStreamExt for TcpStream {
                     keepalive.is_some() as c_int));
         if let Some(dur) = keepalive {
             try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
-                        dur as c_int));
+                        (dur / 1000) as c_int));
         }
         Ok(())
     }
@@ -603,7 +603,7 @@ impl TcpStreamExt for TcpStream {
         }
         let secs = try!(getopt::<c_int>(self.as_sock(), libc::IPPROTO_TCP,
                                         KEEPALIVE_OPTION));
-        Ok(Some(secs as u32))
+        Ok(Some((secs as u32) * 1000))
     }
 
     #[cfg(windows)]
