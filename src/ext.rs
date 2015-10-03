@@ -33,12 +33,14 @@ use socket;
 #[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "freebsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "dragonfly")] const IPV6_MULTICAST_LOOP: c_int = 11;
+#[cfg(target_os = "openbsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
 #[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "dragonfly")] const IPV6_V6ONLY: c_int = 27;
+#[cfg(target_os = "openbsd")] const IPV6_V6ONLY: c_int = 27;
 
 cfg_if! {
     if #[cfg(windows)] {
@@ -557,6 +559,8 @@ impl<T: AsRawSocket> AsSock for T {
 cfg_if! {
     if #[cfg(any(target_os = "macos", target_os = "ios"))] {
         const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
+    } else if #[cfg(target_os="openbsd")] {
+        const KEEPALIVE_OPTION: libc::c_int = libc::SO_KEEPALIVE;
     } else if #[cfg(unix)] {
         const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
     } else {
