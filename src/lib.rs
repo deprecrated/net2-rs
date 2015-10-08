@@ -36,7 +36,7 @@
 //! // use `stream` as a TcpStream
 //! ```
 
-#![doc(html_root_url = "http://alexcrichton.com/net2-rs")]
+#![doc(html_root_url = "https://doc.rust-lang.org/net2-rs")]
 #![deny(missing_docs, warnings)]
 
 extern crate kernel32;
