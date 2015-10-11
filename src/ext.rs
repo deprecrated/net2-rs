@@ -29,13 +29,13 @@ use socket;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(windows)] use ws2_32::*;
 
-#[cfg(target_os = "linux")] const IPV6_MULTICAST_LOOP: c_int = 19;
+#[cfg(any(target_os = "linux", target_os = "android"))] const IPV6_MULTICAST_LOOP: c_int = 19;
 #[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "freebsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "dragonfly")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "openbsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
 #[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(target_os = "linux")] const IPV6_V6ONLY: c_int = 26;
+#[cfg(any(target_os = "linux", target_os = "android"))] const IPV6_V6ONLY: c_int = 26;
 #[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
 #[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
