@@ -20,3 +20,5 @@ cfg-if = "0.1"
 
 [features]
 nightly = []
+duration = []
+default = ["duration"]

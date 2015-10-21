@@ -21,7 +21,8 @@ use {TcpBuilder, UdpBuilder, FromInner};
 use sys;
 use socket;
 
-#[cfg(feature = "nightly")] use std::time::Duration;
+#[cfg(any(feature = "nightly", feature = "duration"))]
+use std::time::Duration;
 
 #[cfg(unix)] pub type Socket = c_int;
 #[cfg(unix)] use std::os::unix::prelude::*;
@@ -145,7 +146,7 @@ pub trait TcpStreamExt {
     ///
     /// Some platforms specify this value in seconds, so sub-second
     /// specifications may be omitted.
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()>;
 
     /// Returns whether keepalive messages are enabled on this socket, and if so
@@ -154,7 +155,7 @@ pub trait TcpStreamExt {
     /// For more information about this option, see [`set_keepalive`][link].
     ///
     /// [link]: #tymethod.set_keepalive
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn keepalive(&self) -> io::Result<Option<Duration>>;
 
     /// Sets the `SO_RCVTIMEO` option for this socket.
@@ -171,7 +172,7 @@ pub trait TcpStreamExt {
     /// `read` function will wait before returning a timeout. A value of `None`
     /// means that no read timeout should be specified and otherwise `Some`
     /// indicates the number of duration of the timeout.
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_read_timeout(&self, val: Option<Duration>) -> io::Result<()>;
 
     /// Gets the value of the `SO_RCVTIMEO` option for this socket.
@@ -186,7 +187,7 @@ pub trait TcpStreamExt {
     /// For more information about this option, see [`set_read_timeout`][link].
     ///
     /// [link]: #tymethod.set_read_timeout
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn read_timeout(&self) -> io::Result<Option<Duration>>;
 
     /// Sets the `SO_SNDTIMEO` option for this socket.
@@ -203,7 +204,7 @@ pub trait TcpStreamExt {
     /// `write` function will wait before returning a timeout. A value of `None`
     /// means that no read timeout should be specified and otherwise `Some`
     /// indicates the duration of the timeout.
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_write_timeout(&self, val: Option<Duration>) -> io::Result<()>;
 
     /// Gets the value of the `SO_SNDTIMEO` option for this socket.
@@ -218,7 +219,7 @@ pub trait TcpStreamExt {
     /// For more information about this option, see [`set_write_timeout`][link].
     ///
     /// [link]: #tymethod.set_write_timeout
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
 
     /// Sets the value for the `IP_TTL` option on this socket.
@@ -471,7 +472,7 @@ pub trait UdpSocketExt {
     /// `read` function will wait before returning a timeout. A value of `None`
     /// means that no read timeout should be specified and otherwise `Some`
     /// indicates the number of duration of the timeout.
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_read_timeout(&self, val: Option<Duration>) -> io::Result<()>;
 
     /// Gets the value of the `SO_RCVTIMEO` option for this socket.
@@ -486,7 +487,7 @@ pub trait UdpSocketExt {
     /// For more information about this option, see [`set_read_timeout`][link].
     ///
     /// [link]: #tymethod.set_read_timeout
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn read_timeout(&self) -> io::Result<Option<Duration>>;
 
     /// Sets the `SO_SNDTIMEO` option for this socket.
@@ -503,7 +504,7 @@ pub trait UdpSocketExt {
     /// `write` function will wait before returning a timeout. A value of `None`
     /// means that no read timeout should be specified and otherwise `Some`
     /// indicates the duration of the timeout.
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_write_timeout(&self, val: Option<Duration>) -> io::Result<()>;
 
     /// Gets the value of the `SO_SNDTIMEO` option for this socket.
@@ -518,7 +519,7 @@ pub trait UdpSocketExt {
     /// For more information about this option, see [`set_write_timeout`][link].
     ///
     /// [link]: #tymethod.set_write_timeout
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn write_timeout(&self) -> io::Result<Option<Duration>>;
 
     /// Get the value of the `SO_ERROR` option on this socket.
@@ -577,12 +578,12 @@ impl TcpStreamExt for TcpStream {
             .map(int2bool)
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
         self.set_keepalive_ms(keepalive.map(dur2ms))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn keepalive(&self) -> io::Result<Option<Duration>> {
         self.keepalive_ms().map(|o| o.map(ms2dur))
     }
@@ -678,22 +679,22 @@ impl TcpStreamExt for TcpStream {
             .map(timeout2ms)
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.set_read_timeout_ms(dur.map(dur2ms))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.read_timeout_ms().map(|o| o.map(ms2dur))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.set_write_timeout_ms(dur.map(dur2ms))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.write_timeout_ms().map(|o| o.map(ms2dur))
     }
@@ -763,12 +764,12 @@ fn timeout2ms(dur: libc::DWORD) -> Option<u32> {
     }
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(any(feature = "nightly", feature = "duration"))]
 fn ms2dur(ms: u32) -> Duration {
     Duration::new((ms as u64) / 1000, (ms as u32) % 1000 * 1_000_000)
 }
 
-#[cfg(feature = "nightly")]
+#[cfg(any(feature = "nightly", feature = "duration"))]
 fn dur2ms(dur: Duration) -> u32 {
     (dur.as_secs() as u32 * 1000) + (dur.subsec_nanos() / 1_000_000)
 }
@@ -894,22 +895,22 @@ impl UdpSocketExt for UdpSocket {
             .map(timeout2ms)
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.set_read_timeout_ms(dur.map(dur2ms))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.read_timeout_ms().map(|o| o.map(ms2dur))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.set_write_timeout_ms(dur.map(dur2ms))
     }
 
-    #[cfg(feature = "nightly")]
+    #[cfg(any(feature = "nightly", feature = "duration"))]
     fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.write_timeout_ms().map(|o| o.map(ms2dur))
     }
