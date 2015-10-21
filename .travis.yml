@@ -1,13 +1,18 @@
 language: rust
 rust:
   - 1.1.0
+  - stable
   - beta
   - nightly
 sudo: false
 before_script:
   - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 script:
-  - cargo test
+  - if [ "$TRAVIS_RUST_VERSION" = "1.1.0" ]; then
+      cargo test --no-default-features;
+    else
+      cargo test;
+    fi
   - if [ "$TRAVIS_RUST_VERSION" = "nightly" ]; then
       cargo test --features nightly;
       cargo doc --features nightly --no-deps;
