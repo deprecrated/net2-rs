@@ -19,6 +19,16 @@ use {TcpBuilder, UdpBuilder, FromInner};
 use sys;
 use socket;
 
+cfg_if! {
+    if #[cfg(any(target_os = "freebsd", target_os = "macos",
+                 target_os = "ios", target_os = "dragonfly"))] {
+        use libc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
+        use libc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+    } else {
+        // ...
+    }
+}
+
 #[cfg(any(feature = "nightly", feature = "duration"))]
 use std::time::Duration;
 
