@@ -12,19 +12,7 @@ use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::io::FromRawFd;
-use libc::{self, c_int};
-
-cfg_if! {
-    if #[cfg(any(target_os = "linux", target_os = "android"))] {
-        const FIOCLEX: libc::c_ulong = 0x5451;
-    } else {
-        const FIOCLEX: libc::c_ulong = 0x20006601;
-    }
-}
-
-extern {
-    fn ioctl(fd: libc::c_int, req: libc::c_ulong, ...) -> libc::c_int;
-}
+use libc::{self, c_int, ioctl, FIOCLEX};
 
 mod impls;
 

@@ -18,7 +18,7 @@ pub trait UnixTcpBuilderExt {
 
 impl UnixTcpBuilderExt for TcpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
+        ext::set_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
                     reuse as c_int).map(|()| self)
     }
 }
@@ -35,7 +35,7 @@ pub trait UnixUdpBuilderExt {
 
 impl UnixUdpBuilderExt for UdpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
+        ext::set_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
                     reuse as c_int).map(|()| self)
     }
 }

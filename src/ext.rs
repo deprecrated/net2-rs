@@ -15,8 +15,6 @@ use std::mem;
 use std::net::{TcpStream, TcpListener, UdpSocket, Ipv4Addr, Ipv6Addr};
 use std::net::ToSocketAddrs;
 
-use libc::{self, c_int, socklen_t, c_void, c_uint};
-
 use {TcpBuilder, UdpBuilder, FromInner};
 use sys;
 use socket;
@@ -26,62 +24,32 @@ use std::time::Duration;
 
 #[cfg(unix)] pub type Socket = c_int;
 #[cfg(unix)] use std::os::unix::prelude::*;
-#[cfg(windows)] pub type Socket = libc::SOCKET;
+#[cfg(unix)] use libc::*;
+#[cfg(windows)] pub type Socket = SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(windows)] use ws2_32::*;
+#[cfg(windows)] use winapi::*;
 
-#[cfg(any(target_os = "linux", target_os = "android"))] const IPV6_MULTICAST_LOOP: c_int = 19;
-#[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(target_os = "freebsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(target_os = "dragonfly")] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(target_os = "openbsd")] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(target_os = "windows")] const IPV6_MULTICAST_LOOP: c_int = 11;
-#[cfg(any(target_os = "linux", target_os = "android"))] const IPV6_V6ONLY: c_int = 26;
-#[cfg(any(target_os = "macos", target_os = "ios"))] const IPV6_V6ONLY: c_int = 27;
-#[cfg(target_os = "windows")] const IPV6_V6ONLY: c_int = 27;
-#[cfg(target_os = "freebsd")] const IPV6_V6ONLY: c_int = 27;
-#[cfg(target_os = "dragonfly")] const IPV6_V6ONLY: c_int = 27;
-#[cfg(target_os = "openbsd")] const IPV6_V6ONLY: c_int = 27;
-
-cfg_if! {
-    if #[cfg(windows)] {
-        use libc::FIONBIO;
-    } else if #[cfg(any(target_os = "linux", target_os = "android"))] {
-        const FIONBIO: c_int = 0x5421;
-    } else {
-        const FIONBIO: libc::c_ulong = 0x8004667e;
-    }
-}
-
-#[cfg(windows)] const SIO_KEEPALIVE_VALS: libc::DWORD = 0x98000004;
+#[cfg(windows)] const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
 #[cfg(windows)]
 #[repr(C)]
 struct tcp_keepalive {
-    onoff: libc::c_ulong,
-    keepalivetime: libc::c_ulong,
-    keepaliveinterval: libc::c_ulong,
+    onoff: c_ulong,
+    keepalivetime: c_ulong,
+    keepaliveinterval: c_ulong,
 }
 
-#[cfg(not(windows))]
-extern "system" {
-    fn getsockopt(sockfd: Socket,
-                  level: c_int,
-                  optname: c_int,
-                  optval: *mut c_void,
-                  optlen: *mut socklen_t) -> c_int;
-}
-
-pub fn setopt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
+pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
                        payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
-        try!(::cvt(libc::setsockopt(sock, opt, val, payload,
-                                    mem::size_of::<T>() as socklen_t)));
+        try!(::cvt(setsockopt(sock, opt, val, payload,
+                              mem::size_of::<T>() as socklen_t)));
         Ok(())
     }
 }
 
-fn getopt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
+fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;
@@ -559,22 +527,23 @@ impl<T: AsRawSocket> AsSock for T {
 
 cfg_if! {
     if #[cfg(any(target_os = "macos", target_os = "ios"))] {
-        const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPALIVE;
+        use libc::TCP_KEEPALIVE as KEEPALIVE_OPTION;
     } else if #[cfg(target_os="openbsd")] {
-        const KEEPALIVE_OPTION: libc::c_int = libc::SO_KEEPALIVE;
+        use libc::SO_KEEPALIVE as KEEPALIVE_OPTION;
     } else if #[cfg(unix)] {
-        const KEEPALIVE_OPTION: libc::c_int = libc::TCP_KEEPIDLE;
+        use libc::TCP_KEEPIDLE as KEEPALIVE_OPTION;
     } else {
+        // ...
     }
 }
 
 impl TcpStreamExt for TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_TCP, libc::TCP_NODELAY,
+        set_opt(self.as_sock(), IPPROTO_TCP, TCP_NODELAY,
                nodelay as c_int)
     }
     fn nodelay(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_TCP, libc::TCP_NODELAY)
+        get_opt(self.as_sock(), IPPROTO_TCP, TCP_NODELAY)
             .map(int2bool)
     }
 
@@ -590,10 +559,10 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(unix)]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        try!(setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
+        try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
                     keepalive.is_some() as c_int));
         if let Some(dur) = keepalive {
-            try!(setopt(self.as_sock(), libc::IPPROTO_TCP, KEEPALIVE_OPTION,
+            try!(set_opt(self.as_sock(), IPPROTO_TCP, KEEPALIVE_OPTION,
                         (dur / 1000) as c_int));
         }
         Ok(())
@@ -601,29 +570,29 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(unix)]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = try!(getopt::<c_int>(self.as_sock(), libc::SOL_SOCKET,
-                                             libc::SO_KEEPALIVE));
+        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
+                                             SO_KEEPALIVE));
         if keepalive == 0 {
             return Ok(None)
         }
-        let secs = try!(getopt::<c_int>(self.as_sock(), libc::IPPROTO_TCP,
+        let secs = try!(get_opt::<c_int>(self.as_sock(), IPPROTO_TCP,
                                         KEEPALIVE_OPTION));
         Ok(Some((secs as u32) * 1000))
     }
 
     #[cfg(windows)]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        let ms = keepalive.unwrap_or(libc::INFINITE);
+        let ms = keepalive.unwrap_or(INFINITE);
         let ka = tcp_keepalive {
-            onoff: keepalive.is_some() as libc::c_ulong,
-            keepalivetime: ms as libc::c_ulong,
-            keepaliveinterval: ms as libc::c_ulong,
+            onoff: keepalive.is_some() as c_ulong,
+            keepalivetime: ms as c_ulong,
+            keepaliveinterval: ms as c_ulong,
         };
         unsafe {
             ::cvt_win(WSAIoctl(self.as_sock(),
                                SIO_KEEPALIVE_VALS,
                                &ka as *const _ as *mut _,
-                               mem::size_of_val(&ka) as libc::DWORD,
+                               mem::size_of_val(&ka) as DWORD,
                                0 as *mut _,
                                0,
                                0 as *mut _,
@@ -645,7 +614,7 @@ impl TcpStreamExt for TcpStream {
                                     0 as *mut _,
                                     0,
                                     &mut ka as *mut _ as *mut _,
-                                    mem::size_of_val(&ka) as libc::DWORD,
+                                    mem::size_of_val(&ka) as DWORD,
                                     0 as *mut _,
                                     0 as *mut _,
                                     None)));
@@ -654,28 +623,28 @@ impl TcpStreamExt for TcpStream {
             if ka.onoff == 0 {
                 None
             } else {
-                timeout2ms(ka.keepaliveinterval as libc::DWORD)
+                timeout2ms(ka.keepaliveinterval as DWORD)
             }
         })
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO,
                ms2timeout(dur))
     }
 
     fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO)
             .map(timeout2ms)
     }
 
     fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO,
                ms2timeout(dur))
     }
 
     fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO)
             .map(timeout2ms)
     }
 
@@ -700,20 +669,20 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        getopt::<c_int>(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
             .map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
     }
 
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
@@ -721,7 +690,7 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
     }
 
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -730,19 +699,19 @@ impl TcpStreamExt for TcpStream {
 }
 
 #[cfg(unix)]
-fn ms2timeout(dur: Option<u32>) -> libc::timeval {
+fn ms2timeout(dur: Option<u32>) -> timeval {
     // TODO: be more rigorous
     match dur {
-        Some(d) => libc::timeval {
-            tv_sec: (d / 1000) as libc::time_t,
-            tv_usec: (d % 1000) as libc::suseconds_t,
+        Some(d) => timeval {
+            tv_sec: (d / 1000) as time_t,
+            tv_usec: (d % 1000) as suseconds_t,
         },
-        None => libc::timeval { tv_sec: 0, tv_usec: 0 },
+        None => timeval { tv_sec: 0, tv_usec: 0 },
     }
 }
 
 #[cfg(unix)]
-fn timeout2ms(dur: libc::timeval) -> Option<u32> {
+fn timeout2ms(dur: timeval) -> Option<u32> {
     if dur.tv_sec == 0 && dur.tv_usec == 0 {
         None
     } else {
@@ -751,12 +720,12 @@ fn timeout2ms(dur: libc::timeval) -> Option<u32> {
 }
 
 #[cfg(windows)]
-fn ms2timeout(dur: Option<u32>) -> libc::DWORD {
+fn ms2timeout(dur: Option<u32>) -> DWORD {
     dur.unwrap_or(0)
 }
 
 #[cfg(windows)]
-fn timeout2ms(dur: libc::DWORD) -> Option<u32> {
+fn timeout2ms(dur: DWORD) -> Option<u32> {
     if dur == 0 {
         None
     } else {
@@ -788,110 +757,110 @@ fn int2err(n: c_int) -> Option<io::Error> {
 
 impl UdpSocketExt for UdpSocket {
     fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_BROADCAST,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST,
                broadcast as c_int)
     }
     fn broadcast(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_BROADCAST)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST)
             .map(int2bool)
     }
     fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_MULTICAST_LOOP,
+        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP,
                multicast_loop_v4 as c_int)
     }
     fn multicast_loop_v4(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_MULTICAST_LOOP)
+        get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP)
             .map(int2bool)
     }
     fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_MULTICAST_TTL,
+        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL,
                multicast_ttl_v4 as c_int)
     }
     fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        getopt::<c_int>(self.as_sock(), libc::IPPROTO_IP, libc::IP_MULTICAST_TTL)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL)
             .map(|b| b as u32)
     }
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
                multicast_loop_v6 as c_int)
     }
     fn multicast_loop_v6(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_MULTICAST_LOOP)
+        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_MULTICAST_LOOP)
             .map(int2bool)
     }
 
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        getopt::<c_int>(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
             .map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
     }
 
     fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
                          -> io::Result<()> {
-        let mreq = libc::ip_mreq {
+        let mreq = ip_mreq {
             imr_multiaddr: ip2in_addr(multiaddr),
             imr_interface: ip2in_addr(interface),
         };
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_ADD_MEMBERSHIP, mreq)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     }
 
     fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                          -> io::Result<()> {
-        let mreq = libc::ip6_mreq {
+        let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: interface as c_uint,
         };
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, libc::IPV6_ADD_MEMBERSHIP,
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
                mreq)
     }
 
     fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
                           -> io::Result<()> {
-        let mreq = libc::ip_mreq {
+        let mreq = ip_mreq {
             imr_multiaddr: ip2in_addr(multiaddr),
             imr_interface: ip2in_addr(interface),
         };
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_DROP_MEMBERSHIP, mreq)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
     }
 
     fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                           -> io::Result<()> {
-        let mreq = libc::ip6_mreq {
+        let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: interface as c_uint,
         };
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, libc::IPV6_DROP_MEMBERSHIP,
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
                mreq)
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO,
                ms2timeout(dur))
     }
 
     fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO)
             .map(timeout2ms)
     }
 
     fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO,
                ms2timeout(dur))
     }
 
     fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO)
             .map(timeout2ms)
     }
 
@@ -916,7 +885,7 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
     }
 
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
@@ -943,8 +912,7 @@ fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
 
 #[cfg(unix)]
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
-    use libc::funcs::bsd44::ioctl;
-    let mut nonblocking = nonblocking as libc::c_ulong;
+    let mut nonblocking = nonblocking as c_ulong;
     ::cvt(unsafe {
         ioctl(sock, FIONBIO, &mut nonblocking)
     }).map(|_| ())
@@ -952,15 +920,15 @@ fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
 
 #[cfg(windows)]
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
-    let mut nonblocking = nonblocking as libc::c_ulong;
+    let mut nonblocking = nonblocking as c_ulong;
     ::cvt(unsafe {
-        libc::ioctlsocket(sock, FIONBIO, &mut nonblocking)
+        ioctlsocket(sock, FIONBIO, &mut nonblocking)
     }).map(|_| ())
 }
 
-fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
+fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
-    libc::in_addr {
+    in_addr {
         s_addr: ::hton(((oct[0] as u32) << 24) |
                        ((oct[1] as u32) << 16) |
                        ((oct[2] as u32) <<  8) |
@@ -968,42 +936,50 @@ fn ip2in_addr(ip: &Ipv4Addr) -> libc::in_addr {
     }
 }
 
-fn ip2in6_addr(ip: &Ipv6Addr) -> libc::in6_addr {
+fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
+    let mut ret: in6_addr = unsafe { mem::zeroed() };
     let seg = ip.segments();
-    libc::in6_addr {
-        s6_addr: [
-            ::hton(seg[0]),
-            ::hton(seg[1]),
-            ::hton(seg[2]),
-            ::hton(seg[3]),
-            ::hton(seg[4]),
-            ::hton(seg[5]),
-            ::hton(seg[6]),
-            ::hton(seg[7]),
-        ],
-    }
+    ret.s6_addr = [
+        (seg[0] >> 0) as u8,
+        (seg[0] >> 8) as u8,
+        (seg[1] >> 0) as u8,
+        (seg[1] >> 8) as u8,
+        (seg[2] >> 0) as u8,
+        (seg[2] >> 8) as u8,
+        (seg[3] >> 0) as u8,
+        (seg[3] >> 8) as u8,
+        (seg[4] >> 0) as u8,
+        (seg[4] >> 8) as u8,
+        (seg[5] >> 0) as u8,
+        (seg[5] >> 8) as u8,
+        (seg[6] >> 0) as u8,
+        (seg[6] >> 8) as u8,
+        (seg[7] >> 0) as u8,
+        (seg[7] >> 8) as u8,
+    ];
+    return ret
 }
 
 impl TcpListenerExt for TcpListener {
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        getopt::<c_int>(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
             .map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        getopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
     }
 
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -1018,7 +994,7 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
@@ -1028,7 +1004,7 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
@@ -1038,7 +1014,7 @@ impl TcpBuilder {
     /// addresses. For IPv4 sockets this means that a socket may bind even when
     /// there's a socket already listening on this port.
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR,
                reuse as c_int).map(|()| self)
     }
 
@@ -1048,7 +1024,7 @@ impl TcpBuilder {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
     }
 }
 
@@ -1059,7 +1035,7 @@ impl UdpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
             .map(|()| self)
     }
 
@@ -1069,7 +1045,7 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
@@ -1079,7 +1055,7 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.reuse_address
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        setopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEADDR,
+        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR,
                reuse as c_int).map(|()| self)
     }
 
@@ -1089,6 +1065,6 @@ impl UdpBuilder {
     /// the field in the process. This can be useful for checking errors between
     /// calls.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        getopt(self.as_sock(), libc::SOL_SOCKET, libc::SO_ERROR).map(int2err)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
     }
 }
