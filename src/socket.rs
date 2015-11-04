@@ -12,9 +12,10 @@ use std::fmt;
 use std::io;
 use std::mem;
 use std::net::SocketAddr;
-use libc::{self, c_int, socklen_t, sockaddr};
+use libc::c_int;
 
 use sys;
+use sys::c;
 
 pub struct Socket {
     inner: sys::Socket,
@@ -28,20 +29,20 @@ impl Socket {
     pub fn bind(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr2raw(addr);
         unsafe {
-            ::cvt(libc::bind(self.inner.raw(), addr, len)).map(|_| ())
+            ::cvt(c::bind(self.inner.raw(), addr, len)).map(|_| ())
         }
     }
 
     pub fn listen(&self, backlog: i32) -> io::Result<()> {
         unsafe {
-            ::cvt(libc::listen(self.inner.raw(), backlog)).map(|_| ())
+            ::cvt(c::listen(self.inner.raw(), backlog)).map(|_| ())
         }
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr2raw(addr);
         unsafe {
-            ::cvt(libc::connect(self.inner.raw(), addr, len)).map(|_| ())
+            ::cvt(c::connect(self.inner.raw(), addr, len)).map(|_| ())
         }
     }
 }
@@ -69,13 +70,13 @@ impl ::IntoInner for Socket {
     fn into_inner(self) -> sys::Socket { self.inner }
 }
 
-fn addr2raw(addr: &SocketAddr) -> (*const sockaddr, socklen_t) {
+fn addr2raw(addr: &SocketAddr) -> (*const c::sockaddr, c::socklen_t) {
     match *addr {
         SocketAddr::V4(ref a) => {
-            (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
+            (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
         }
         SocketAddr::V6(ref a) => {
-            (a as *const _ as *const _, mem::size_of_val(a) as socklen_t)
+            (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
         }
     }
 }

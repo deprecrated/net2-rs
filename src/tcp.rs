@@ -12,10 +12,10 @@ use std::cell::RefCell;
 use std::io;
 use std::net::{ToSocketAddrs, TcpListener, TcpStream};
 use std::fmt;
-use libc;
 
 use IntoInner;
 use socket::Socket;
+use sys::c;
 
 /// An "in progress" TCP socket which has not yet been connected or listened.
 ///
@@ -31,7 +31,7 @@ impl TcpBuilder {
     /// Note that passing other kinds of flags or arguments can be done through
     /// the `FromRaw{Fd,Socket}` implementation.
     pub fn new_v4() -> io::Result<TcpBuilder> {
-        Socket::new(libc::AF_INET, libc::SOCK_STREAM).map(::FromInner::from_inner)
+        Socket::new(c::AF_INET, c::SOCK_STREAM).map(::FromInner::from_inner)
     }
 
     /// Constructs a new TcpBuilder with the `AF_INET6` domain, the `SOCK_STREAM`
@@ -40,7 +40,7 @@ impl TcpBuilder {
     /// Note that passing other kinds of flags or arguments can be done through
     /// the `FromRaw{Fd,Socket}` implementation.
     pub fn new_v6() -> io::Result<TcpBuilder> {
-        Socket::new(libc::AF_INET6, libc::SOCK_STREAM).map(::FromInner::from_inner)
+        Socket::new(c::AF_INET6, c::SOCK_STREAM).map(::FromInner::from_inner)
     }
 
     /// Binds this socket to the specified address.

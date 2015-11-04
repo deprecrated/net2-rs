@@ -12,10 +12,10 @@ use std::cell::RefCell;
 use std::fmt;
 use std::io;
 use std::net::{ToSocketAddrs, UdpSocket};
-use libc;
 
 use IntoInner;
 use socket::Socket;
+use sys::c;
 
 /// An "in progress" UDP socket which has not yet been connected.
 ///
@@ -31,7 +31,7 @@ impl UdpBuilder {
     /// Note that passing other kinds of flags or arguments can be done through
     /// the `FromRaw{Fd,Socket}` implementation.
     pub fn new_v4() -> io::Result<UdpBuilder> {
-        Socket::new(libc::AF_INET, libc::SOCK_DGRAM).map(::FromInner::from_inner)
+        Socket::new(c::AF_INET, c::SOCK_DGRAM).map(::FromInner::from_inner)
     }
 
     /// Constructs a new UdpBuilder with the `AF_INET6` domain, the `SOCK_DGRAM`
@@ -40,7 +40,7 @@ impl UdpBuilder {
     /// Note that passing other kinds of flags or arguments can be done through
     /// the `FromRaw{Fd,Socket}` implementation.
     pub fn new_v6() -> io::Result<UdpBuilder> {
-        Socket::new(libc::AF_INET6, libc::SOCK_DGRAM).map(::FromInner::from_inner)
+        Socket::new(c::AF_INET6, c::SOCK_DGRAM).map(::FromInner::from_inner)
     }
 
     /// Binds this socket to the specified address.

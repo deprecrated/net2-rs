@@ -49,11 +49,14 @@ struct tcp_keepalive {
     keepaliveinterval: c_ulong,
 }
 
+#[cfg(windows)] fn v(opt: IPPROTO) -> c_int { opt.0 as c_int }
+#[cfg(unix)] fn v(opt: c_int) -> c_int { opt }
+
 pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
                        payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
-        try!(::cvt(setsockopt(sock, opt, val, payload,
+        try!(::cvt(setsockopt(sock, opt, val, payload as *const _,
                               mem::size_of::<T>() as socklen_t)));
         Ok(())
     }
@@ -63,7 +66,8 @@ fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;
-        try!(::cvt(getsockopt(sock, opt, val, &mut slot as *mut _ as *mut _,
+        try!(::cvt(getsockopt(sock, opt, val,
+                              &mut slot as *mut _ as *mut _,
                               &mut len)));
         assert_eq!(len as usize, mem::size_of::<T>());
         Ok(slot)
@@ -549,11 +553,11 @@ cfg_if! {
 
 impl TcpStreamExt for TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_TCP, TCP_NODELAY,
+        set_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY,
                nodelay as c_int)
     }
     fn nodelay(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_TCP, TCP_NODELAY)
+        get_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY)
             .map(int2bool)
     }
 
@@ -572,7 +576,7 @@ impl TcpStreamExt for TcpStream {
         try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
                     keepalive.is_some() as c_int));
         if let Some(dur) = keepalive {
-            try!(set_opt(self.as_sock(), IPPROTO_TCP, KEEPALIVE_OPTION,
+            try!(set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
                         (dur / 1000) as c_int));
         }
         Ok(())
@@ -585,7 +589,7 @@ impl TcpStreamExt for TcpStream {
         if keepalive == 0 {
             return Ok(None)
         }
-        let secs = try!(get_opt::<c_int>(self.as_sock(), IPPROTO_TCP,
+        let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
                                         KEEPALIVE_OPTION));
         Ok(Some((secs as u32) * 1000))
     }
@@ -688,11 +692,11 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)
     }
 
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
@@ -791,11 +795,11 @@ impl UdpSocketExt for UdpSocket {
             .map(|b| b as u32)
     }
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP,
                multicast_loop_v6 as c_int)
     }
     fn multicast_loop_v6(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_MULTICAST_LOOP)
+        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP)
             .map(int2bool)
     }
 
@@ -809,11 +813,11 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)
     }
 
     fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
@@ -831,7 +835,7 @@ impl UdpSocketExt for UdpSocket {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: interface as c_uint,
         };
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP,
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP,
                mreq)
     }
 
@@ -850,7 +854,7 @@ impl UdpSocketExt for UdpSocket {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: interface as c_uint,
         };
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP,
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP,
                mreq)
     }
 
@@ -932,10 +936,11 @@ fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as c_ulong;
     ::cvt(unsafe {
-        ioctlsocket(sock, FIONBIO, &mut nonblocking)
+        ioctlsocket(sock, FIONBIO as c_int, &mut nonblocking)
     }).map(|_| ())
 }
 
+#[cfg(unix)]
 fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
     in_addr {
@@ -943,6 +948,17 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
                        ((oct[1] as u32) << 16) |
                        ((oct[2] as u32) <<  8) |
                        ((oct[3] as u32) <<  0)),
+    }
+}
+
+#[cfg(windows)]
+fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
+    let oct = ip.octets();
+    in_addr {
+        S_un: ::hton(((oct[0] as u32) << 24) |
+                     ((oct[1] as u32) << 16) |
+                     ((oct[2] as u32) <<  8) |
+                     ((oct[3] as u32) <<  0)),
     }
 }
 
@@ -981,11 +997,11 @@ impl TcpListenerExt for TcpListener {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
     }
 
     fn only_v6(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY).map(int2bool)
+        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)
     }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -1014,7 +1030,7 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 
@@ -1055,7 +1071,7 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), IPPROTO_IPV6, IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
             .map(|()| self)
     }
 

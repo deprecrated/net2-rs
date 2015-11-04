@@ -23,6 +23,13 @@ use kernel32::*;
 const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
 const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
+pub mod c {
+    pub use winapi::*;
+    pub use ws2_32::*;
+
+    pub use winapi::SOCKADDR as sockaddr;
+}
+
 mod impls;
 
 fn init() {

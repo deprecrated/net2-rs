@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::os::windows::io::{FromRawSocket, AsRawSocket};
-use libc::SOCKET;
+use winapi::SOCKET;
 
 use {TcpBuilder, UdpBuilder, FromInner, AsInner};
 use socket::Socket;
