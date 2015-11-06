@@ -13,7 +13,7 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 
 [dependencies]
 libc = "0.2"
-ws2_32-sys = "0.1"
+ws2_32-sys = "0.2"
 winapi = "0.2"
 kernel32-sys = "0.1"
 cfg-if = "0.1"
