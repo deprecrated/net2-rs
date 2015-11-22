@@ -833,7 +833,7 @@ impl UdpSocketExt for UdpSocket {
                          -> io::Result<()> {
         let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
-            ipv6mr_interface: interface as c_uint,
+            ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP,
                mreq)
@@ -852,7 +852,7 @@ impl UdpSocketExt for UdpSocket {
                           -> io::Result<()> {
         let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
-            ipv6mr_interface: interface as c_uint,
+            ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP,
                mreq)
@@ -960,6 +960,16 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
                      ((oct[2] as u32) <<  8) |
                      ((oct[3] as u32) <<  0)),
     }
+}
+
+#[cfg(target_os = "android")]
+fn to_ipv6mr_interface(value: u32) -> c_int {
+    value as c_int
+}
+
+#[cfg(not(target_os = "android"))]
+fn to_ipv6mr_interface(value: u32) -> c_uint {
+    value as c_uint
 }
 
 fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
