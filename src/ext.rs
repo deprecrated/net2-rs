@@ -976,22 +976,22 @@ fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
     let mut ret: in6_addr = unsafe { mem::zeroed() };
     let seg = ip.segments();
     ret.s6_addr = [
-        (seg[0] >> 0) as u8,
         (seg[0] >> 8) as u8,
-        (seg[1] >> 0) as u8,
+        (seg[0] >> 0) as u8,
         (seg[1] >> 8) as u8,
-        (seg[2] >> 0) as u8,
+        (seg[1] >> 0) as u8,
         (seg[2] >> 8) as u8,
-        (seg[3] >> 0) as u8,
+        (seg[2] >> 0) as u8,
         (seg[3] >> 8) as u8,
-        (seg[4] >> 0) as u8,
+        (seg[3] >> 0) as u8,
         (seg[4] >> 8) as u8,
-        (seg[5] >> 0) as u8,
+        (seg[4] >> 0) as u8,
         (seg[5] >> 8) as u8,
-        (seg[6] >> 0) as u8,
+        (seg[5] >> 0) as u8,
         (seg[6] >> 8) as u8,
-        (seg[7] >> 0) as u8,
+        (seg[6] >> 0) as u8,
         (seg[7] >> 8) as u8,
+        (seg[7] >> 0) as u8,
     ];
     return ret
 }
