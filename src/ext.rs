@@ -516,6 +516,19 @@ pub trait UdpSocketExt {
     /// receive data from the specified address.
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()>;
 
+    /// Sends data on the socket to the remote address to which it is connected.
+    ///
+    /// The `connect` method will connect this socket to a remote address. This
+    /// method will fail if the socket is not connected.
+    fn send(&self, buf: &[u8]) -> io::Result<usize>;
+
+    /// Receives data on the socket from the remote address to which it is
+    /// connected.
+    ///
+    /// The `connect` method will connect this socket to a remote address. This
+    /// method will fail if the socket is not connected.
+    fn recv(&self, buf: &mut [u8]) -> io::Result<usize>;
+
     /// Moves this UDP socket into or out of nonblocking mode.
     ///
     /// For more information about this option, see
@@ -904,6 +917,41 @@ impl UdpSocketExt for UdpSocket {
 
     fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         do_connect(self.as_sock(), addr)
+    }
+
+    #[cfg(unix)]
+    fn send(&self, buf: &[u8]) -> io::Result<usize> {
+        unsafe {
+            ::cvt(send(self.as_sock(), buf.as_ptr() as *const _, buf.len(), 0)).map(|n| n as usize)
+        }
+    }
+
+    #[cfg(windows)]
+    fn send(&self, buf: &[u8]) -> io::Result<usize> {
+        let len = ::std::cmp::min(buf.len(), c_int::max_value() as usize);
+        let buf = &buf[..len];
+        unsafe {
+            ::cvt(send(self.as_sock(), buf.as_ptr() as *const _, len as c_int, 0))
+                .map(|n| n as usize)
+        }
+    }
+
+    #[cfg(unix)]
+    fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+        unsafe {
+            ::cvt(recv(self.as_sock(), buf.as_mut_ptr() as *mut _, buf.len(), 0))
+                .map(|n| n as usize)
+        }
+    }
+
+    #[cfg(windows)]
+    fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+        let len = ::std::cmp::min(buf.len(), c_int::max_value() as usize);
+        let buf = &mut buf[..len];
+        unsafe {
+            ::cvt(recv(self.as_sock(), buf.as_mut_ptr() as *mut _, buf.len() as c_int, 0))
+                .map(|n| n as usize)
+        }
     }
 
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
