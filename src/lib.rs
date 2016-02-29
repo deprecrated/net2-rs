@@ -43,6 +43,7 @@
 
 extern crate kernel32;
 extern crate libc;
+#[cfg(unix)] extern crate nix;
 extern crate winapi;
 extern crate ws2_32;
 #[macro_use] extern crate cfg_if;

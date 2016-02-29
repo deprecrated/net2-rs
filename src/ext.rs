@@ -36,6 +36,8 @@ use std::time::Duration;
 #[cfg(unix)] pub type Socket = c_int;
 #[cfg(unix)] use std::os::unix::prelude::*;
 #[cfg(unix)] use libc::*;
+#[cfg(unix)] use nix;
+
 #[cfg(windows)] pub type Socket = SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(windows)] use ws2_32::*;
@@ -245,6 +247,12 @@ pub trait TcpStreamExt {
     /// This should only be necessary if an unconnected socket was extracted
     /// from a `TcpBuilder` and then needs to be connected.
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()>;
+
+    /// Executes a `connect` operation on this socket, establishing a connection
+    /// to the host specified by `addr` with connection timeout specified by `timeout`.
+
+    #[cfg(all(any(feature = "nightly", feature = "duration"), unix))]
+    fn connect_timeout<T: ToSocketAddrs>(&self, addr: T, timeout: Duration) -> io::Result<()>;
 
     /// Get the value of the `SO_ERROR` option on this socket.
     ///
@@ -716,6 +724,11 @@ impl TcpStreamExt for TcpStream {
     fn connect<T: ToSocketAddrs>(&self, addr: T) -> io::Result<()> {
         do_connect(self.as_sock(), addr)
     }
+    
+    #[cfg(all(any(feature = "nightly", feature = "duration"), unix))]
+    fn connect_timeout<T: ToSocketAddrs>(&self, addr: T, timeout: Duration) -> io::Result<()> {
+        do_connect_timeout(self.as_sock(), addr, timeout)
+    }
 
     fn take_error(&self) -> io::Result<Option<io::Error>> {
         get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
@@ -971,6 +984,60 @@ fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
     });
     mem::forget(sock);
     return ret
+}
+
+
+#[cfg(all(any(feature = "nightly", feature = "duration"), unix))]
+fn do_connect_timeout<A: ToSocketAddrs>(sock: Socket, addr: A, timeout: Duration) -> io::Result<()> {
+    try!(set_nonblocking(sock, true));
+    match do_connect(sock, addr) {
+        Ok(_) => (),
+        Err(e) => {
+          match e.raw_os_error() {
+            Some(errno) => {
+                match nix::errno::from_i32(errno) {
+                    nix::errno::Errno::EALREADY => (), //114
+                    nix::errno::Errno::EINPROGRESS => (), //115
+                    _ => return Err(e)
+                }
+            },
+            None => return Err(e)
+          }
+        }            
+    }
+
+    let mut fdset = nix::sys::select::FdSet::new();
+    let socket_fd = sock;
+    fdset.insert(socket_fd);
+    
+    let mut timeout_timeval = nix::sys::time::TimeVal::microseconds(timeout.as_secs() as i64 * 1000 * 1000);
+
+
+    let select_res = try!(nix::sys::select::select(
+      socket_fd + 1,
+      None,
+      Some(&mut fdset),
+      None,
+      &mut timeout_timeval
+    ));
+    
+    // This it what fails if `addr` is unreachable.
+    if select_res != 1 {
+      return Err(io::Error::last_os_error());
+    }
+    
+    // Make sure the socket encountered no error.
+    let socket_error_code = try!(nix::sys::socket::getsockopt(
+      socket_fd,
+      nix::sys::socket::sockopt::SocketError
+    ));
+    
+    if socket_error_code != 0 {
+      return Err(io::Error::from_raw_os_error(socket_error_code));
+    }
+    
+    try!(set_nonblocking(sock, false));
+    Ok(())
 }
 
 #[cfg(unix)]
