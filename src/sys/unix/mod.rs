@@ -16,7 +16,9 @@ use libc::{self, c_int, ioctl, FIOCLEX};
 
 mod impls;
 
-pub use libc as c;
+pub mod c {
+    pub use libc::*;
+}
 
 pub struct Socket {
     fd: c_int,
