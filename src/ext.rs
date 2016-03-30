@@ -235,6 +235,27 @@ pub trait TcpStreamExt {
     /// [link]: #tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
 
+    /// Sets the value for the `IP_TRANSPARENT` option on this socket.
+    ///
+    /// Setting this boolean option enables transparent proxying on
+    /// this socket.  This socket option allows the calling
+    /// application to bind to a nonlocal IP address and operate both
+    /// as a client and a server with the foreign address as the local
+    /// endpoint.  NOTE: this requires that routing be set up in a way
+    /// that packets going to the foreign address are routed through
+    /// the TProxy box (i.e., the system hosting the application that
+    /// employs the IP_TRANSPARENT socket option).  Enabling this
+    /// socket option requires superuser privileges (the CAP_NET_ADMIN
+    /// capability).
+    fn set_transparent(&self, transparent: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TRANSPARENT` option for this socket.
+    ///
+    /// For more information about this option, see [`set_transparent`][link].
+    ///
+    /// [link]: #tymethod.set_transparent
+    fn transparent(&self) -> io::Result<bool>;
+
     /// Executes a `connect` operation on this socket, establishing a connection
     /// to the host specified by `addr`.
     ///
@@ -294,6 +315,27 @@ pub trait TcpListenerExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
+
+    /// Sets the value for the `IP_TRANSPARENT` option on this socket.
+    ///
+    /// Setting this boolean option enables transparent proxying on
+    /// this socket.  This socket option allows the calling
+    /// application to bind to a nonlocal IP address and operate both
+    /// as a client and a server with the foreign address as the local
+    /// endpoint.  NOTE: this requires that routing be set up in a way
+    /// that packets going to the foreign address are routed through
+    /// the TProxy box (i.e., the system hosting the application that
+    /// employs the IP_TRANSPARENT socket option).  Enabling this
+    /// socket option requires superuser privileges (the CAP_NET_ADMIN
+    /// capability).
+    fn set_transparent(&self, transparent: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TRANSPARENT` option for this socket.
+    ///
+    /// For more information about this option, see [`set_transparent`][link].
+    ///
+    /// [link]: #tymethod.set_transparent
+    fn transparent(&self) -> io::Result<bool>;
 
     /// Get the value of the `SO_ERROR` option on this socket.
     ///
@@ -404,6 +446,27 @@ pub trait UdpSocketExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_only_v6
     fn only_v6(&self) -> io::Result<bool>;
+
+    /// Sets the value for the `IP_TRANSPARENT` option on this socket.
+    ///
+    /// Setting this boolean option enables transparent proxying on
+    /// this socket.  This socket option allows the calling
+    /// application to bind to a nonlocal IP address and operate both
+    /// as a client and a server with the foreign address as the local
+    /// endpoint.  NOTE: this requires that routing be set up in a way
+    /// that packets going to the foreign address are routed through
+    /// the TProxy box (i.e., the system hosting the application that
+    /// employs the IP_TRANSPARENT socket option).  Enabling this
+    /// socket option requires superuser privileges (the CAP_NET_ADMIN
+    /// capability).
+    fn set_transparent(&self, transparent: bool) -> io::Result<()>;
+
+    /// Gets the value of the `IP_TRANSPARENT` option for this socket.
+    ///
+    /// For more information about this option, see [`set_transparent`][link].
+    ///
+    /// [link]: #tymethod.set_transparent
+    fn transparent(&self) -> io::Result<bool>;
 
     /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
     ///
@@ -724,6 +787,16 @@ impl TcpStreamExt for TcpStream {
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
     }
+
+    #[cfg(unix)]
+    fn set_transparent(&self, transparent: bool) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT, transparent as c_int)
+    }
+
+    #[cfg(unix)]
+    fn transparent(&self) -> io::Result<bool> {
+        get_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT).map(int2bool)
+    }
 }
 
 #[cfg(unix)]
@@ -958,6 +1031,16 @@ impl UdpSocketExt for UdpSocket {
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
     }
+
+    #[cfg(unix)]
+    fn set_transparent(&self, transparent: bool) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT, transparent as c_int)
+    }
+
+    #[cfg(unix)]
+    fn transparent(&self) -> io::Result<bool> {
+        get_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT).map(int2bool)
+    }
 }
 
 fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
@@ -1069,6 +1152,16 @@ impl TcpListenerExt for TcpListener {
 
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
+    }
+
+    #[cfg(unix)]
+    fn set_transparent(&self, transparent: bool) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT, transparent as c_int)
+    }
+
+    #[cfg(unix)]
+    fn transparent(&self) -> io::Result<bool> {
+        get_opt(self.as_sock(), v(IPPROTO_IP), IP_TRANSPARENT).map(int2bool)
     }
 }
 
