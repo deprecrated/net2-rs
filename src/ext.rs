@@ -63,7 +63,7 @@ pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
     }
 }
 
-fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
+pub fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;
@@ -771,11 +771,11 @@ fn dur2ms(dur: Duration) -> u32 {
     (dur.as_secs() as u32 * 1000) + (dur.subsec_nanos() / 1_000_000)
 }
 
-fn int2bool(n: c_int) -> bool {
+pub fn int2bool(n: c_int) -> bool {
     if n == 0 {false} else {true}
 }
 
-fn int2err(n: c_int) -> Option<io::Error> {
+pub fn int2err(n: c_int) -> Option<io::Error> {
     if n == 0 {
         None
     } else {
@@ -1103,6 +1103,11 @@ impl TcpBuilder {
                reuse as c_int).map(|()| self)
     }
 
+    /// Check the `SO_REUSEADDR` option on this socket.
+    pub fn get_reuse_address(&self) -> io::Result<bool> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR).map(int2bool)
+    }
+
     /// Get the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
@@ -1142,6 +1147,11 @@ impl UdpBuilder {
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
         set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR,
                reuse as c_int).map(|()| self)
+    }
+
+    /// Check the `SO_REUSEADDR` option on this socket.
+    pub fn get_reuse_address(&self) -> io::Result<bool> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR).map(int2bool)
     }
 
     /// Get the value of the `SO_ERROR` option on this socket.
