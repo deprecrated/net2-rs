@@ -41,9 +41,12 @@
        html_root_url = "https://doc.rust-lang.org/net2-rs")]
 #![deny(missing_docs, warnings)]
 
+#[cfg(windows)]
 extern crate kernel32;
 extern crate libc;
+#[cfg(windows)]
 extern crate winapi;
+#[cfg(windows)]
 extern crate ws2_32;
 #[macro_use] extern crate cfg_if;
 
