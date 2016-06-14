@@ -98,6 +98,30 @@ pub trait TcpStreamExt {
     /// [link]: #tymethod.set_nodelay
     fn nodelay(&self) -> io::Result<bool>;
 
+    /// Sets the value of the `SO_RCVBUF` option on this socket.
+    ///
+    /// Changes the size of the operating system's receive buffer associated with the socket.
+    fn set_recv_buffer_size(&self, size: usize) -> io::Result<()>;
+
+    /// Gets the value of the `SO_RCVBUF` option on this socket.
+    ///
+    /// For more information about this option, see [`set_recv_buffer_size`][link].
+    ///
+    /// [link]: #tymethod.set_recv_buffer_size
+    fn recv_buffer_size(&self) -> io::Result<usize>;
+
+    /// Sets the value of the `SO_SNDBUF` option on this socket.
+    ///
+    /// Changes the size of the operating system's send buffer associated with the socket.
+    fn set_send_buffer_size(&self, size: usize) -> io::Result<()>;
+
+    /// Gets the value of the `SO_SNDBUF` option on this socket.
+    ///
+    /// For more information about this option, see [`set_send_buffer`][link].
+    ///
+    /// [link]: #tymethod.set_send_buffer
+    fn send_buffer_size(&self) -> io::Result<usize>;
+
     /// Sets whether keepalive messages are enabled to be sent on this socket.
     ///
     /// On Unix, this option will set the `SO_KEEPALIVE` as well as the
@@ -318,6 +342,30 @@ pub trait TcpListenerExt {
 ///
 /// [link]: https://doc.rust-lang.org/std/net/struct.UdpSocket.html
 pub trait UdpSocketExt {
+    /// Sets the value of the `SO_RCVBUF` option on this socket.
+    ///
+    /// Changes the size of the operating system's receive buffer associated with the socket.
+    fn set_recv_buffer_size(&self, size: usize) -> io::Result<()>;
+
+    /// Gets the value of the `SO_RCVBUF` option on this socket.
+    ///
+    /// For more information about this option, see [`set_recv_buffer_size`][link].
+    ///
+    /// [link]: #tymethod.set_recv_buffer_size
+    fn recv_buffer_size(&self) -> io::Result<usize>;
+
+    /// Sets the value of the `SO_SNDBUF` option on this socket.
+    ///
+    /// Changes the size of the operating system's send buffer associated with the socket.
+    fn set_send_buffer_size(&self, size: usize) -> io::Result<()>;
+
+    /// Gets the value of the `SO_SNDBUF` option on this socket.
+    ///
+    /// For more information about this option, see [`set_send_buffer`][link].
+    ///
+    /// [link]: #tymethod.set_send_buffer
+    fn send_buffer_size(&self) -> io::Result<usize>;
+
     /// Sets the value of the `SO_BROADCAST` option for this socket.
     ///
     /// When enabled, this socket is allowed to send packets to a broadcast
@@ -569,6 +617,24 @@ cfg_if! {
 }
 
 impl TcpStreamExt for TcpStream {
+
+    fn set_recv_buffer_size(&self, size: usize) -> io::Result<()> {
+        // TODO: casting usize to a c_int should be a checked cast
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF, size as c_int)
+    }
+
+    fn recv_buffer_size(&self) -> io::Result<usize> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF).map(int2usize)
+    }
+
+    fn set_send_buffer_size(&self, size: usize) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDBUF, size as c_int)
+    }
+
+    fn send_buffer_size(&self) -> io::Result<usize> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDBUF).map(int2usize)
+    }
+
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         set_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY,
                nodelay as c_int)
@@ -778,6 +844,11 @@ pub fn int2bool(n: c_int) -> bool {
     if n == 0 {false} else {true}
 }
 
+pub fn int2usize(n: c_int) -> usize {
+    // TODO: casting c_int to a usize should be a checked cast
+    n as usize
+}
+
 pub fn int2err(n: c_int) -> Option<io::Error> {
     if n == 0 {
         None
@@ -787,6 +858,23 @@ pub fn int2err(n: c_int) -> Option<io::Error> {
 }
 
 impl UdpSocketExt for UdpSocket {
+
+    fn set_recv_buffer_size(&self, size: usize) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF, size as c_int)
+    }
+
+    fn recv_buffer_size(&self) -> io::Result<usize> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF).map(int2usize)
+    }
+
+    fn set_send_buffer_size(&self, size: usize) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDBUF, size as c_int)
+    }
+
+    fn send_buffer_size(&self) -> io::Result<usize> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDBUF).map(int2usize)
+    }
+
     fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
         set_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST,
                broadcast as c_int)
