@@ -40,12 +40,13 @@ fn init() {
         let mut data: WSADATA = mem::zeroed();
         let ret = WSAStartup(0x202, &mut data);
         assert_eq!(ret, 0);
-        ::libc::atexit(shutdown);
-    });
 
-    extern fn shutdown() {
-        unsafe { WSACleanup(); }
-    }
+        // TODO: somehow register shutdown
+        // ::libc::atexit(shutdown);
+        // extern fn shutdown() {
+        //     unsafe { WSACleanup(); }
+        // }
+    });
 }
 
 pub struct Socket {

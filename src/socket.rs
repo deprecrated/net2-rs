@@ -12,7 +12,10 @@ use std::fmt;
 use std::io;
 use std::mem;
 use std::net::SocketAddr;
+#[cfg(unix)]
 use libc::c_int;
+#[cfg(windows)]
+use winapi::c_int;
 
 use sys;
 use sys::c;

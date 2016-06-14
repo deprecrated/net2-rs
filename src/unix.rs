@@ -26,7 +26,7 @@ impl UnixTcpBuilderExt for TcpBuilder {
     }
 
     fn get_reuse_port(&self) -> io::Result<bool> {
-        ext::get_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT)
+        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT)
             .map(ext::int2bool)
     }
 }
@@ -51,7 +51,7 @@ impl UnixUdpBuilderExt for UdpBuilder {
     }
 
     fn get_reuse_port(&self) -> io::Result<bool> {
-        ext::get_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT)
+        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT)
             .map(ext::int2bool)
     }
 }
