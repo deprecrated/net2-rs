@@ -1,7 +1,7 @@
 //! Unix-specific extensions to the `std::net` types.
 
 use std::io;
-use libc::{self, c_int};
+use sys::c::{self, c_int};
 
 use {TcpBuilder, UdpBuilder};
 use ext::{self, AsSock};
@@ -21,7 +21,7 @@ pub trait UnixTcpBuilderExt {
 
 impl UnixTcpBuilderExt for TcpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::set_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
+        ext::set_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT,
                     reuse as c_int).map(|()| self)
     }
 
@@ -46,7 +46,7 @@ pub trait UnixUdpBuilderExt {
 
 impl UnixUdpBuilderExt for UdpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::set_opt(self.as_sock(), libc::SOL_SOCKET, libc::SO_REUSEPORT,
+        ext::set_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT,
                     reuse as c_int).map(|()| self)
     }
 
