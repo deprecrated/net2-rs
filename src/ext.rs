@@ -859,12 +859,11 @@ fn timeout2ms(dur: DWORD) -> Option<u32> {
 
 #[cfg(any(feature = "nightly", feature = "duration"))]
 fn linger2dur(linger_opt: linger) -> Option<Duration> {
-    let dur = Duration::from_secs(linger_opt.l_linger as u64);
-    if dur.as_secs() == 0 {
+    if linger_opt.l_onoff == 0 {
         None
     }
     else {
-        Some(dur)
+        Some(Duration::from_secs(linger_opt.l_linger as u64))
     }
 }
 
