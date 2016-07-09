@@ -286,6 +286,14 @@ pub trait TcpStreamExt {
     /// On Unix this corresponds to calling fcntl, and on Windows this
     /// corresponds to calling ioctlsocket.
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
+
+    /// Sets the linger duration of this socket by setting the SO_LINGER option
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn set_linger(&self, dur: Option<Duration>) -> io::Result<()>;
+
+    /// reads the linger duration for this socket by getting the SO_LINGER option
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn linger(&self) -> io::Result<Option<Duration>>;
 }
 
 /// Extension methods for the standard [`TcpListener` type][link] in `std::net`.
@@ -337,6 +345,14 @@ pub trait TcpListenerExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_nonblocking
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
+    
+    /// Sets the linger duration of this socket by setting the SO_LINGER option
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn set_linger(&self, dur: Option<Duration>) -> io::Result<()>;
+
+    /// reads the linger duration for this socket by getting the SO_LINGER option
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn linger(&self) -> io::Result<Option<Duration>>;
 }
 
 /// Extension methods for the standard [`UdpSocket` type][link] in `std::net`.
@@ -794,6 +810,16 @@ impl TcpStreamExt for TcpStream {
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
     }
+    
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn set_linger(&self, dur: Option<Duration>) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_LINGER, dur2linger(dur))
+    }
+
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn linger(&self) -> io::Result<Option<Duration>> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
+    }
 }
 
 #[cfg(unix)]
@@ -828,6 +854,31 @@ fn timeout2ms(dur: DWORD) -> Option<u32> {
         None
     } else {
         Some(dur)
+    }
+}
+
+#[cfg(any(feature = "nightly", feature = "duration"))]
+fn linger2dur(linger_opt: linger) -> Option<Duration> {
+    let dur = Duration::from_secs(linger_opt.l_linger as u64);
+    if dur.as_secs() == 0 {
+        None
+    }
+    else {
+        Some(dur)
+    }
+}
+
+#[cfg(any(feature = "nightly", feature = "duration"))]
+fn dur2linger(dur: Option<Duration>) -> linger {
+    match dur {
+        Some(d) => {
+            let onoff = if d.as_secs() == 0 { 0 } else { 1 };
+            linger {
+                l_onoff: onoff as u16,
+                l_linger: d.as_secs() as u16,
+            }
+        },
+        None => linger { l_onoff: 0, l_linger: 0 },
     }
 }
 
@@ -1162,6 +1213,16 @@ impl TcpListenerExt for TcpListener {
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
     }
+
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn set_linger(&self, dur: Option<Duration>) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_LINGER, dur2linger(dur))
+    }
+
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn linger(&self) -> io::Result<Option<Duration>> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
+    }
 }
 
 impl TcpBuilder {
@@ -1207,6 +1268,18 @@ impl TcpBuilder {
     /// calls.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         get_opt(self.as_sock(), SOL_SOCKET, SO_ERROR).map(int2err)
+    }
+
+    /// Sets the linger option for this socket
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn set_linger(&self, dur: Option<Duration>) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_LINGER, dur2linger(dur))
+    }
+
+    /// Gets the linger option for this socket
+    #[cfg(any(feature = "nightly", feature = "duration"))]
+    fn linger(&self) -> io::Result<Option<Duration>> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
     }
 }
 
