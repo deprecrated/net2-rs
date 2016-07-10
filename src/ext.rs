@@ -867,14 +867,26 @@ fn linger2dur(linger_opt: linger) -> Option<Duration> {
     }
 }
 
-#[cfg(any(feature = "nightly", feature = "duration"))]
+#[cfg(all(any(feature = "nightly", feature = "duration"), windows))]
 fn dur2linger(dur: Option<Duration>) -> linger {
     match dur {
         Some(d) => {
-            let onoff = if d.as_secs() == 0 { 0 } else { 1 };
             linger {
-                l_onoff: onoff as u16,
+                l_onoff: 1,
                 l_linger: d.as_secs() as u16,
+            }
+        },
+        None => linger { l_onoff: 0, l_linger: 0 },
+    }
+}
+
+#[cfg(all(any(feature = "nightly", feature = "duration"), unix))]
+fn dur2linger(dur: Option<Duration>) -> linger {
+    match dur {
+        Some(d) => {
+            linger {
+                l_onoff: 1,
+                l_linger: d.as_secs() as c_int,
             }
         },
         None => linger { l_onoff: 0, l_linger: 0 },
