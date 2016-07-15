@@ -19,6 +19,16 @@ kernel32-sys = "0.2"
 [target."cfg(unix)".dependencies]
 libc = "0.2.14"
 
+# Compat with older Cargo versions temporarily
+[target.x86_64-unknown-linux-gnu.dependencies]
+libc = "0.2.14"
+[target.i686-unknown-linux-gnu.dependencies]
+libc = "0.2.14"
+[target.x86_64-apple-darwin.dependencies]
+libc = "0.2.14"
+[target.i686-apple-darwin.dependencies]
+libc = "0.2.14"
+
 [dependencies]
 cfg-if = "0.1"
 
