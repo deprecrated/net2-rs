@@ -345,7 +345,7 @@ pub trait TcpListenerExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_nonblocking
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()>;
-    
+
     /// Sets the linger duration of this socket by setting the SO_LINGER option
     #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_linger(&self, dur: Option<Duration>) -> io::Result<()>;
@@ -810,7 +810,7 @@ impl TcpStreamExt for TcpStream {
     fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         set_nonblocking(self.as_sock(), nonblocking)
     }
-    
+
     #[cfg(any(feature = "nightly", feature = "duration"))]
     fn set_linger(&self, dur: Option<Duration>) -> io::Result<()> {
         set_opt(self.as_sock(), SOL_SOCKET, SO_LINGER, dur2linger(dur))
@@ -818,7 +818,7 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(any(feature = "nightly", feature = "duration"))]
     fn linger(&self) -> io::Result<Option<Duration>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)
     }
 }
 
@@ -1128,7 +1128,7 @@ fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
 }
 
 #[cfg(unix)]
-fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
+pub fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as c_ulong;
     ::cvt(unsafe {
         ioctl(sock, FIONBIO, &mut nonblocking)
@@ -1136,7 +1136,7 @@ fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
 }
 
 #[cfg(windows)]
-fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
+pub fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as c_ulong;
     ::cvt(unsafe {
         ioctlsocket(sock, FIONBIO as c_int, &mut nonblocking)
@@ -1232,7 +1232,7 @@ impl TcpListenerExt for TcpListener {
 
     #[cfg(any(feature = "nightly", feature = "duration"))]
     fn linger(&self) -> io::Result<Option<Duration>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)
     }
 }
 
@@ -1290,7 +1290,7 @@ impl TcpBuilder {
     /// Gets the linger option for this socket
     #[cfg(any(feature = "nightly", feature = "duration"))]
     fn linger(&self) -> io::Result<Option<Duration>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)        
+        get_opt(self.as_sock(), SOL_SOCKET, SO_LINGER).map(linger2dur)
     }
 }
 

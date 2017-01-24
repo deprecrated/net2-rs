@@ -93,6 +93,23 @@ impl TcpBuilder {
         })
     }
 
+    /// Initiate a connection on this socket toward the specified address.
+    ///
+    /// This function allows additionaly to specify timeout for connect.
+    pub fn connect_w_timeout<T>(&self, addr: T, ms: u64) -> io::Result<TcpStream>
+        where T: ToSocketAddrs
+    {
+        self.with_socket(|sock| {
+            let err = io::Error::new(io::ErrorKind::Other,
+                                     "no socket addresses resolved");
+            try!(addr.to_socket_addrs()).fold(Err(err), |prev, addr| {
+                prev.or_else(|_| sock.connect_w_timeout(&addr, ms))
+            })
+        }).and_then(|()| {
+            self.to_tcp_stream()
+        })
+    }
+
     /// Converts this builder into a `TcpStream`
     ///
     /// This function will consume the internal socket and return it re-wrapped

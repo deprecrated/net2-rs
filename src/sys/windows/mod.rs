@@ -29,6 +29,7 @@ pub mod c {
     pub use ws2_32::*;
 
     pub use winapi::SOCKADDR as sockaddr;
+    pub const CONN_WOULD_BLOCK: DWORD = WSAEWOULDBLOCK;
 }
 
 mod impls;
