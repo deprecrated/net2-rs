@@ -32,12 +32,13 @@ pub mod c {
 
 mod impls;
 
-#[inline]
 fn init() {
     static INIT: Once = ONCE_INIT;
 
     INIT.call_once(|| {
-        //To initialize Winsock
+        // Initialize winsock through the standard library by just creating a
+        // dummy socket. Whether this is successful or not we drop the result as
+        // libstd will be sure to have initialized winsock.
         let _ = UdpSocket::bind("127.0.0.1:34254");
     });
 }
