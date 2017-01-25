@@ -10,7 +10,6 @@
 
 #![allow(bad_style)]
 
-
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -33,19 +32,13 @@ pub mod c {
 
 mod impls;
 
+#[inline]
 fn init() {
     static INIT: Once = ONCE_INIT;
 
-    INIT.call_once(|| unsafe {
-        let mut data: WSADATA = mem::zeroed();
-        let ret = WSAStartup(0x202, &mut data);
-        assert_eq!(ret, 0);
-
-        // TODO: somehow register shutdown
-        // ::libc::atexit(shutdown);
-        // extern fn shutdown() {
-        //     unsafe { WSACleanup(); }
-        // }
+    INIT.call_once(|| {
+        //To initialize Winsock
+        let _ = UdpSocket::bind("127.0.0.1:34254");
     });
 }
 
