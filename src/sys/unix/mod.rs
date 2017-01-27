@@ -21,6 +21,7 @@ mod impls;
 
 pub mod c {
     pub use libc::*;
+    pub const CONN_WOULD_BLOCK: c_int = EINPROGRESS;
 }
 
 pub struct Socket {
