@@ -107,6 +107,8 @@ fn cvt_win<T: PartialEq + utils::Zero>(t: T) -> io::Result<T> {
 
 fn hton<I: NetInt>(i: I) -> I { i.to_be() }
 
+fn ntoh<I: NetInt>(i: I) -> I { I::from_be(i) }
+
 trait AsInner {
     type Inner;
     fn as_inner(&self) -> &Self::Inner;

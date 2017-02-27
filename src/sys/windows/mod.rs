@@ -24,10 +24,42 @@ const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
 const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
 pub mod c {
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct in_addr {
+        pub s_addr: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct in6_addr {
+        pub s6_addr: [u8; 16],
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct sockaddr_in {
+        pub sin_family: ADDRESS_FAMILY,
+        pub sin_port: USHORT,
+        pub sin_addr: in_addr,
+        pub sin_zero: [CHAR; 8],
+    }
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct sockaddr_in6 {
+        pub sin6_family: ADDRESS_FAMILY,
+        pub sin6_port: USHORT,
+        pub sin6_flowinfo: c_ulong,
+        pub sin6_addr: in6_addr,
+        pub sin6_scope_id: c_ulong,
+    }
+
     pub use winapi::*;
     pub use ws2_32::*;
 
     pub use winapi::SOCKADDR as sockaddr;
+    pub use winapi::SOCKADDR_STORAGE as sockaddr_storage;
 }
 
 mod impls;

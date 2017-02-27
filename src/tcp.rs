@@ -10,7 +10,7 @@
 
 use std::cell::RefCell;
 use std::io;
-use std::net::{ToSocketAddrs, TcpListener, TcpStream};
+use std::net::{SocketAddr, ToSocketAddrs, TcpListener, TcpStream};
 use std::fmt;
 
 use IntoInner;
@@ -116,6 +116,18 @@ impl TcpBuilder {
             .map(|s| s.into_inner().into_tcp_listener())
             .ok_or(io::Error::new(io::ErrorKind::Other,
                                   "socket has already been consumed"))
+    }
+
+    /// Returns the address of the local half of this TCP socket.
+    ///
+    /// An error will be returned if `listen` or `connect` has already been
+    /// called on this builder.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        match *self.socket.borrow() {
+            Some(ref s) => s.getsockname(),
+            None => Err(io::Error::new(io::ErrorKind::Other,
+                                       "builder has already finished its socket")),
+        }
     }
 
     fn with_socket<F>(&self, f: F) -> io::Result<()>
