@@ -101,7 +101,7 @@ fn raw2addr(storage: &c::sockaddr_storage, len: c::socklen_t) -> io::Result<Sock
             unsafe {
                 assert!(len as usize >= mem::size_of::<c::sockaddr_in>());
                 let sa = storage as *const _ as *const c::sockaddr_in;
-                let bits = ::ntoh((*sa).sin_addr.s_addr);
+                let bits = c::sockaddr_in_u32(&(*sa));
                 let ip = Ipv4Addr::new((bits >> 24) as u8,
                                        (bits >> 16) as u8,
                                        (bits >> 8) as u8,

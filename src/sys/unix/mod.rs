@@ -21,6 +21,10 @@ mod impls;
 
 pub mod c {
     pub use libc::*;
+
+    pub fn sockaddr_in_u32(sa: &sockaddr_in) -> u32 {
+        ::ntoh((*sa).sin_addr.s_addr)
+    }
 }
 
 pub struct Socket {
