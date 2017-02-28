@@ -28,6 +28,12 @@ pub mod c {
     pub use ws2_32::*;
 
     pub use winapi::SOCKADDR as sockaddr;
+    pub use winapi::SOCKADDR_STORAGE as sockaddr_storage;
+    pub use winapi::SOCKADDR_IN as sockaddr_in;
+
+    pub fn sockaddr_in_u32(sa: &sockaddr_in) -> u32 {
+        ::ntoh(sa.sin_addr.S_un)
+    }
 }
 
 mod impls;

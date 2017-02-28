@@ -1,6 +1,6 @@
 extern crate net2;
 
-use std::net::TcpStream;
+use std::net::{TcpStream, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::io::prelude::*;
 use std::thread;
 
@@ -17,9 +17,11 @@ macro_rules! t {
 fn smoke_build_listener() {
     let b = t!(TcpBuilder::new_v4());
     t!(b.bind("127.0.0.1:0"));
-    let listener = t!(b.listen(200));
 
-    let addr = t!(listener.local_addr());
+    let addr = t!(b.local_addr());
+    assert_eq!(addr.ip(), IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
+
+    let listener = t!(b.listen(200));
 
     let t = thread::spawn(move || {
         let mut s = t!(listener.accept()).0;
@@ -31,4 +33,13 @@ fn smoke_build_listener() {
     let mut stream = t!(TcpStream::connect(&addr));
     t!(stream.write(&[1,2,3]));
     t.join().unwrap();
+}
+
+#[test]
+fn smoke_build_listener_v6() {
+    let b = t!(TcpBuilder::new_v6());
+    t!(b.bind("::1:0"));
+
+    let addr = t!(b.local_addr());
+    assert_eq!(addr.ip(), IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)));
 }
