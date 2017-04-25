@@ -624,7 +624,9 @@ impl<T: AsRawSocket> AsSock for T {
 cfg_if! {
     if #[cfg(any(target_os = "macos", target_os = "ios"))] {
         use libc::TCP_KEEPALIVE as KEEPALIVE_OPTION;
-    } else if #[cfg(any(target_os = "openbsd", target_os = "netbsd"))] {
+    } else if #[cfg(any(target_os = "openbsd",
+                        target_os = "netbsd",
+                        target_os = "haiku"))] {
         use libc::SO_KEEPALIVE as KEEPALIVE_OPTION;
     } else if #[cfg(unix)] {
         use libc::TCP_KEEPIDLE as KEEPALIVE_OPTION;
@@ -962,13 +964,23 @@ impl UdpSocketExt for UdpSocket {
         get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL)
             .map(|b| b as u32)
     }
+    #[cfg(not(target_os = "haiku"))]
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP,
                multicast_loop_v6 as c_int)
     }
+    #[cfg(target_os = "haiku")]
+    fn set_multicast_loop_v6(&self, _: bool) -> io::Result<()> {
+        return Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no ipv6"))
+    }
+    #[cfg(not(target_os = "haiku"))]
     fn multicast_loop_v6(&self) -> io::Result<bool> {
         get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP)
             .map(int2bool)
+    }
+    #[cfg(target_os = "haiku")]
+    fn multicast_loop_v6(&self) -> io::Result<bool> {
+        return Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no ipv6"))
     }
 
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -980,12 +992,22 @@ impl UdpSocketExt for UdpSocket {
             .map(|b| b as u32)
     }
 
+    #[cfg(not(target_os = "haiku"))]
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
     }
+    #[cfg(target_os = "haiku")]
+    fn set_only_v6(&self, _: bool) -> io::Result<()> {
+        return Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no ipv6"))
+    }
 
+    #[cfg(not(target_os = "haiku"))]
     fn only_v6(&self) -> io::Result<bool> {
         get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)
+    }
+    #[cfg(target_os = "haiku")]
+    fn only_v6(&self) -> io::Result<bool> {
+        Ok(false)
     }
 
     fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
@@ -997,6 +1019,7 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     }
 
+    #[cfg(not(target_os = "haiku"))]
     fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                          -> io::Result<()> {
         let mreq = ipv6_mreq {
@@ -1005,6 +1028,11 @@ impl UdpSocketExt for UdpSocket {
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP,
                mreq)
+    }
+    #[cfg(target_os = "haiku")]
+    fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32)
+                         -> io::Result<()> {
+        return Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no ipv6"))
     }
 
     fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
@@ -1016,6 +1044,7 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
     }
 
+    #[cfg(not(target_os = "haiku"))]
     fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                           -> io::Result<()> {
         let mreq = ipv6_mreq {
@@ -1024,6 +1053,11 @@ impl UdpSocketExt for UdpSocket {
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP,
                mreq)
+    }
+    #[cfg(target_os = "haiku")]
+    fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32)
+                          -> io::Result<()> {
+        return Err(io::Error::new(io::ErrorKind::AddrNotAvailable, "no ipv6"))
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {

@@ -14,7 +14,7 @@ use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::io::FromRawFd;
 use libc::{self, c_int};
-#[cfg(not(target_os = "solaris"))]
+#[cfg(not(any(target_os = "solaris", target_os = "haiku")))]
 use libc::{ioctl, FIOCLEX};
 
 mod impls;
@@ -32,7 +32,7 @@ pub struct Socket {
 }
 
 impl Socket {
-    #[cfg(not(target_os = "solaris"))]
+    #[cfg(not(any(target_os = "solaris", target_os = "haiku")))]
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             let fd = try!(::cvt(libc::socket(family, ty, 0)));
@@ -41,9 +41,9 @@ impl Socket {
         }
     }
 
-    // ioctl(FIOCLEX) is not supported by Solaris/Illumos,
+    // ioctl(FIOCLEX) is not supported by Solaris/Illumos/Haiku,
     // use fcntl(FD_CLOEXEC) instead
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris", target_os = "haiku"))]
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             let fd = try!(::cvt(libc::socket(family, ty, 0)));
