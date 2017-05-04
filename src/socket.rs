@@ -31,7 +31,7 @@ impl Socket {
 
     pub fn bind(&self, addr: &SocketAddr) -> io::Result<()> {
         #[cfg(not(all(target_arch = "aarch64",target_os = "android")))]
-        use libc::socklen_t as len_t;
+        use sys::c::socklen_t as len_t;
         #[cfg(all(target_arch = "aarch64",target_os = "android"))]
         use libc::c_int as len_t;
 
