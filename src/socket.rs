@@ -29,20 +29,15 @@ impl Socket {
         Ok(Socket { inner: try!(sys::Socket::new(family, ty)) })
     }
 
-    #[cfg(not(all(target_arch = "aarch64",target_os = "android")))]
     pub fn bind(&self, addr: &SocketAddr) -> io::Result<()> {
-        let (addr, len) = addr2raw(addr);
-        unsafe {
-            ::cvt(c::bind(self.inner.raw(), addr, len)).map(|_| ())
-        }
-    }
+        #[cfg(not(all(target_arch = "aarch64",target_os = "android")))]
+        use libc::socklen_t as len_t;
+        #[cfg(all(target_arch = "aarch64",target_os = "android"))]
+        use libc::c_int as len_t;
 
-    #[cfg(all(target_arch = "aarch64",target_os = "android"))]
-    pub fn bind(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr2raw(addr);
-        let len_i32 = len as i32;
         unsafe {
-            ::cvt(c::bind(self.inner.raw(), addr, len_i32)).map(|_| ())
+            ::cvt(c::bind(self.inner.raw(), addr, len as len_t)).map(|_| ())
         }
     }
 
