@@ -64,9 +64,7 @@ mod utils;
 
 #[cfg(unix)] #[path = "sys/unix/mod.rs"] mod sys;
 #[cfg(windows)] #[path = "sys/windows/mod.rs"] mod sys;
-// FIXME: should include android here once SO_REUSEPORT has been fixed in
-//        liblibc on android
-#[cfg(all(unix, not(any(target_os = "android", target_os = "solaris"))))] pub mod unix;
+#[cfg(all(unix, not(any(target_os = "solaris"))))] pub mod unix;
 
 pub use tcp::TcpBuilder;
 pub use udp::UdpBuilder;
