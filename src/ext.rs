@@ -26,7 +26,8 @@ cfg_if! {
                  target_os = "macos",
                  target_os = "netbsd",
                  target_os = "openbsd",
-                 target_os = "solaris"))] {
+                 target_os = "solaris",
+                 target_env = "uclibc"))] {
         use libc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
         use libc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
     } else {
