@@ -35,6 +35,17 @@ impl Socket {
     #[cfg(not(any(target_os = "solaris", target_os = "emscripten")))]
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
+            // Linux >2.6.26 overloads the type argument to accept SOCK_CLOEXEC,
+            // avoiding a race with another thread running fork/exec between
+            // socket() and ioctl()
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            match ::cvt(libc::socket(family, ty | libc::SOCK_CLOEXEC, 0)) {
+                Ok(fd) => return Ok(Socket { fd: fd }),
+                // Older versions of Linux return EINVAL; fall back to ioctl
+                Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
+                Err(e) => return Err(e),
+            }
+
             let fd = try!(::cvt(libc::socket(family, ty, 0)));
             ioctl(fd, FIOCLEX);
             Ok(Socket { fd: fd })
