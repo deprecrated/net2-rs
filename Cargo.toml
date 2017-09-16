@@ -15,17 +15,7 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
 [target.'cfg(any(target_os="redox", unix))'.dependencies]
-libc = "0.2.30"
-
-# Compat with older Cargo versions temporarily
-[target.x86_64-unknown-linux-gnu.dependencies]
-libc = "0.2.30"
-[target.i686-unknown-linux-gnu.dependencies]
-libc = "0.2.30"
-[target.x86_64-apple-darwin.dependencies]
-libc = "0.2.30"
-[target.i686-apple-darwin.dependencies]
-libc = "0.2.30"
+libc = { git = "https://github.com/redox-os/liblibc.git" }
 
 [dependencies]
 cfg-if = "0.1"
@@ -34,6 +24,3 @@ cfg-if = "0.1"
 nightly = []
 duration = []
 default = ["duration"]
-
-[replace]
-"libc:0.2.30" = { git = "https://github.com/redox-os/liblibc.git" }
