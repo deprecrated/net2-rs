@@ -42,8 +42,7 @@ use std::time::Duration;
 #[cfg(unix)] use libc::*;
 #[cfg(windows)] pub type Socket = SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
-#[cfg(windows)] use ws2_32::*;
-#[cfg(windows)] use winapi::*;
+#[cfg(windows)] use sys::c::*;
 
 #[cfg(windows)] const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
 #[cfg(windows)]
@@ -54,7 +53,7 @@ struct tcp_keepalive {
     keepaliveinterval: c_ulong,
 }
 
-#[cfg(windows)] fn v(opt: IPPROTO) -> c_int { opt.0 as c_int }
+#[cfg(windows)] fn v(opt: IPPROTO) -> c_int { opt as c_int }
 #[cfg(unix)] fn v(opt: c_int) -> c_int { opt }
 
 pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
@@ -604,7 +603,7 @@ impl<T: AsRawFd> AsSock for T {
 }
 #[cfg(windows)]
 impl<T: AsRawSocket> AsSock for T {
-    fn as_sock(&self) -> Socket { self.as_raw_socket() }
+    fn as_sock(&self) -> Socket { self.as_raw_socket() as Socket }
 }
 
 cfg_if! {
@@ -1128,11 +1127,15 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
 #[cfg(windows)]
 fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
-    in_addr {
-        S_un: ::hton(((oct[0] as u32) << 24) |
-                     ((oct[1] as u32) << 16) |
-                     ((oct[2] as u32) <<  8) |
-                     ((oct[3] as u32) <<  0)),
+    unsafe {
+        let mut S_un: in_addr_S_un = mem::zeroed();
+        *S_un.S_addr_mut() = ::hton(((oct[0] as u32) << 24) |
+                                ((oct[1] as u32) << 16) |
+                                ((oct[2] as u32) <<  8) |
+                                ((oct[3] as u32) <<  0));
+        in_addr {
+            S_un: S_un,
+        }
     }
 }
 
@@ -1149,7 +1152,7 @@ fn to_ipv6mr_interface(value: u32) -> c_uint {
 fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
     let mut ret: in6_addr = unsafe { mem::zeroed() };
     let seg = ip.segments();
-    ret.s6_addr = [
+    let bytes = [
         (seg[0] >> 8) as u8,
         (seg[0] >> 0) as u8,
         (seg[1] >> 8) as u8,
@@ -1167,6 +1170,9 @@ fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
         (seg[7] >> 8) as u8,
         (seg[7] >> 0) as u8,
     ];
+    #[cfg(windows)] unsafe { *ret.u.Byte_mut() = bytes; }
+    #[cfg(not(windows))]   { ret.s6_addr = bytes; }
+
     return ret
 }
 

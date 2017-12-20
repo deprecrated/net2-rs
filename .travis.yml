@@ -5,7 +5,7 @@ rust:
   - nightly
 sudo: false
 before_script:
-  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+  - pip2 install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
 script:
   - if [ "$TRAVIS_RUST_VERSION" = "1.1.0" ]; then
       cargo test --no-default-features;
