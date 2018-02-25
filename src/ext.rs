@@ -17,6 +17,7 @@ use std::net::ToSocketAddrs;
 
 use {TcpBuilder, UdpBuilder, FromInner};
 use sys;
+use sys::c;
 use socket;
 
 cfg_if! {
@@ -1180,18 +1181,6 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     }
 }
 
-#[cfg(unix)]
-fn in_addr2ip(ip: &in_addr) -> Ipv4Addr {
-    let h_addr = ::ntoh(ip.s_addr);
-    
-    let a: u8 = (h_addr >> 24) as u8;
-    let b: u8 = (h_addr >> 16) as u8;
-    let c: u8 = (h_addr >> 8) as u8;
-    let d: u8 = (h_addr >> 0) as u8;
-
-    Ipv4Addr::new(a,b,c,d)
-}
-
 #[cfg(windows)]
 fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
@@ -1205,6 +1194,17 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
             S_un: S_un,
         }
     }
+}
+
+fn in_addr2ip(ip: &in_addr) -> Ipv4Addr {
+    let h_addr = c::in_addr_to_u32(ip);
+    
+    let a: u8 = (h_addr >> 24) as u8;
+    let b: u8 = (h_addr >> 16) as u8;
+    let c: u8 = (h_addr >> 8) as u8;
+    let d: u8 = (h_addr >> 0) as u8;
+
+    Ipv4Addr::new(a,b,c,d)
 }
 
 #[cfg(target_os = "android")]
