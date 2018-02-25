@@ -15,17 +15,17 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
 [target."cfg(unix)".dependencies]
-libc = "0.2.16"
+libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
 
 # Compat with older Cargo versions temporarily
 [target.x86_64-unknown-linux-gnu.dependencies]
-libc = "0.2.16"
+libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
 [target.i686-unknown-linux-gnu.dependencies]
-libc = "0.2.16"
+libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
 [target.x86_64-apple-darwin.dependencies]
-libc = "0.2.16"
+libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
 [target.i686-apple-darwin.dependencies]
-libc = "0.2.16"
+libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
 
 [dependencies]
 cfg-if = "0.1"
