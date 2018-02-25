@@ -474,6 +474,16 @@ pub trait UdpSocketExt {
     /// [link]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn ttl(&self) -> io::Result<u32>;
 
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// Specifies the hop limit for ipv6 unicast packets
+    fn set_unicast_hops_v6(&self, ttl: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_UNICAST_HOPS` option for this socket.
+    ///
+    /// Specifies the hop limit for ipv6 unicast packets
+    fn unicast_hops_v6(&self) -> io::Result<u32>;
+
     /// Sets the value for the `IPV6_V6ONLY` option on this socket.
     ///
     /// For more information about this option, see
@@ -999,7 +1009,7 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn multicast_if_v6(&self) -> io::Result<u32> {
-        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF).map(from_ipv6mr_interface)
+        get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF).map(|b| b as u32)
     }
 
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
@@ -1008,6 +1018,15 @@ impl UdpSocketExt for UdpSocket {
 
     fn ttl(&self) -> io::Result<u32> {
         get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
+            .map(|b| b as u32)
+    }
+
+    fn set_unicast_hops_v6(&self, ttl: u32) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_UNICAST_HOPS, ttl as c_int)
+    }
+
+    fn unicast_hops_v6(&self) -> io::Result<u32> {
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IPV6_UNICAST_HOPS)
             .map(|b| b as u32)
     }
 
@@ -1215,16 +1234,6 @@ fn to_ipv6mr_interface(value: u32) -> c_int {
 #[cfg(not(target_os = "android"))]
 fn to_ipv6mr_interface(value: u32) -> c_uint {
     value as c_uint
-}
-
-#[cfg(target_os = "android")]
-fn from_ipv6mr_interface(value: c_int) -> u32 {
-    value as u32
-}
-
-#[cfg(not(target_os = "android"))]
-fn from_ipv6mr_interface(value: c_uint) -> u32 {
-    value as u32
 }
 
 fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
