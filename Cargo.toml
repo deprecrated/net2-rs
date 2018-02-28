@@ -1,6 +1,6 @@
 [package]
 name = "net2"
-version = "0.2.31"
+version = "0.2.32"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
@@ -15,17 +15,17 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
 [target."cfg(unix)".dependencies]
-libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
+libc = "0.2.37"
 
 # Compat with older Cargo versions temporarily
 [target.x86_64-unknown-linux-gnu.dependencies]
-libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
+libc = "0.2.37"
 [target.i686-unknown-linux-gnu.dependencies]
-libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
+libc = "0.2.37"
 [target.x86_64-apple-darwin.dependencies]
-libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
+libc = "0.2.37"
 [target.i686-apple-darwin.dependencies]
-libc = { version = "0.2.16", git = "https://github.com/bluejekyll/libc" }
+libc = "0.2.37"
 
 [dependencies]
 cfg-if = "0.1"
