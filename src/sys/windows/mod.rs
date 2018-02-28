@@ -42,6 +42,10 @@ pub mod c {
     pub fn sockaddr_in_u32(sa: &sockaddr_in) -> u32 {
         ::ntoh(unsafe { *sa.sin_addr.S_un.S_addr() })
     }
+
+    pub fn in_addr_to_u32(addr: &in_addr) -> u32 {
+        ::ntoh(unsafe { *addr.S_un.S_addr() })
+    }
 }
 
 use self::c::*;

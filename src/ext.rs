@@ -17,6 +17,7 @@ use std::net::ToSocketAddrs;
 
 use {TcpBuilder, UdpBuilder, FromInner};
 use sys;
+use sys::c;
 use socket;
 
 cfg_if! {
@@ -417,6 +418,12 @@ pub trait UdpSocketExt {
     /// [link]: #tymethod.set_multicast_ttl_v4
     fn multicast_ttl_v4(&self) -> io::Result<u32>;
 
+    /// Sets the value of the `IPV6_MULTICAST_HOPS` option for this socket
+    fn set_multicast_hops_v6(&self, hops: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_MULTICAST_HOPS` option for this socket
+    fn multicast_hops_v6(&self) -> io::Result<u32>;
+
     /// Sets the value of the `IPV6_MULTICAST_LOOP` option for this socket.
     ///
     /// Controls whether this socket sees the multicast packets it sends itself.
@@ -430,6 +437,27 @@ pub trait UdpSocketExt {
     ///
     /// [link]: #tymethod.set_multicast_loop_v6
     fn multicast_loop_v6(&self) -> io::Result<bool>;
+
+    /// Sets the value of the `IP_MULTICAST_IF` option for this socket.
+    ///
+    /// Specifies the interface to use for routing multicast packets.
+    fn set_multicast_if_v4(&self, interface: &Ipv4Addr) -> io::Result<()>;
+
+    /// Gets the value of the `IP_MULTICAST_IF` option for this socket.
+    ///
+    /// Returns the interface to use for routing multicast packets.
+    fn multicast_if_v4(&self) -> io::Result<Ipv4Addr>;
+
+
+    /// Sets the value of the `IPV6_MULTICAST_IF` option for this socket.
+    ///
+    /// Specifies the interface to use for routing multicast packets.
+    fn set_multicast_if_v6(&self, interface: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_MULTICAST_IF` option for this socket.
+    ///
+    /// Returns the interface to use for routing multicast packets.
+    fn multicast_if_v6(&self) -> io::Result<u32>;
 
     /// Sets the value for the `IP_TTL` option on this socket.
     ///
@@ -445,6 +473,16 @@ pub trait UdpSocketExt {
     ///
     /// [link]: trait.TcpStreamExt.html#tymethod.set_ttl
     fn ttl(&self) -> io::Result<u32>;
+
+    /// Sets the value for the `IPV6_UNICAST_HOPS` option on this socket.
+    ///
+    /// Specifies the hop limit for ipv6 unicast packets
+    fn set_unicast_hops_v6(&self, ttl: u32) -> io::Result<()>;
+
+    /// Gets the value of the `IPV6_UNICAST_HOPS` option for this socket.
+    ///
+    /// Specifies the hop limit for ipv6 unicast packets
+    fn unicast_hops_v6(&self) -> io::Result<u32>;
 
     /// Sets the value for the `IPV6_V6ONLY` option on this socket.
     ///
@@ -928,14 +966,27 @@ impl UdpSocketExt for UdpSocket {
         get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP)
             .map(int2bool)
     }
+
     fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
         set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL,
                multicast_ttl_v4 as c_int)
     }
+    
     fn multicast_ttl_v4(&self) -> io::Result<u32> {
         get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL)
             .map(|b| b as u32)
     }
+
+    fn set_multicast_hops_v6(&self, hops: u32) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS,
+               hops as c_int)
+    }
+
+    fn multicast_hops_v6(&self) -> io::Result<u32> {
+        get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS)
+            .map(|b| b as u32)
+    }
+
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP,
                multicast_loop_v6 as c_int)
@@ -945,12 +996,37 @@ impl UdpSocketExt for UdpSocket {
             .map(int2bool)
     }
 
+    fn set_multicast_if_v4(&self, interface: &Ipv4Addr) -> io::Result<()> {
+        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF, ip2in_addr(interface))
+    }
+
+    fn multicast_if_v4(&self) -> io::Result<Ipv4Addr> {
+        get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF).map(in_addr2ip)
+    }
+
+    fn set_multicast_if_v6(&self, interface: u32) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF, to_ipv6mr_interface(interface))
+    }
+
+    fn multicast_if_v6(&self) -> io::Result<u32> {
+        get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF).map(|b| b as u32)
+    }
+
     fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
     }
 
     fn ttl(&self) -> io::Result<u32> {
         get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
+            .map(|b| b as u32)
+    }
+
+    fn set_unicast_hops_v6(&self, ttl: u32) -> io::Result<()> {
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_UNICAST_HOPS, ttl as c_int)
+    }
+
+    fn unicast_hops_v6(&self) -> io::Result<u32> {
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IPV6_UNICAST_HOPS)
             .map(|b| b as u32)
     }
 
@@ -1137,6 +1213,17 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
             S_un: S_un,
         }
     }
+}
+
+fn in_addr2ip(ip: &in_addr) -> Ipv4Addr {
+    let h_addr = c::in_addr_to_u32(ip);
+    
+    let a: u8 = (h_addr >> 24) as u8;
+    let b: u8 = (h_addr >> 16) as u8;
+    let c: u8 = (h_addr >> 8) as u8;
+    let d: u8 = (h_addr >> 0) as u8;
+
+    Ipv4Addr::new(a,b,c,d)
 }
 
 #[cfg(target_os = "android")]
