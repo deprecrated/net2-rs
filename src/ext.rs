@@ -38,12 +38,10 @@ cfg_if! {
 
 use std::time::Duration;
 
+#[cfg(any(unix, target_os = "redox"))] use libc::*;
+#[cfg(any(unix, target_os = "redox"))] use std::os::unix::prelude::*;
 #[cfg(target_os = "redox")] pub type Socket = usize;
-#[cfg(target_os = "redox")] use std::os::unix::io::AsRawFd;
-#[cfg(target_os = "redox")] use libc::*;
 #[cfg(unix)] pub type Socket = c_int;
-#[cfg(unix)] use std::os::unix::prelude::*;
-#[cfg(unix)] use libc::*;
 #[cfg(windows)] pub type Socket = SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(windows)] use sys::c::*;
@@ -65,7 +63,9 @@ pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
                        payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
-        try!(::cvt(setsockopt(sock as c_int, opt, val, payload as *const _,
+        #[cfg(target_os = "redox")]
+        let sock = sock as c_int;
+        try!(::cvt(setsockopt(sock, opt, val, payload as *const _,
                               mem::size_of::<T>() as socklen_t)));
         Ok(())
     }
@@ -75,7 +75,9 @@ pub fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;
-        try!(::cvt(getsockopt(sock as c_int, opt, val,
+        #[cfg(target_os = "redox")]
+        let sock = sock as c_int;
+        try!(::cvt(getsockopt(sock, opt, val,
                               &mut slot as *mut _ as *mut _,
                               &mut len)));
         assert_eq!(len as usize, mem::size_of::<T>());

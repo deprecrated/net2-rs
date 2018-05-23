@@ -15,7 +15,7 @@ Extensions to the standard library's networking types as proposed in RFC 1158.
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
 [target.'cfg(any(target_os="redox", unix))'.dependencies]
-libc = { git = "https://github.com/redox-os/liblibc.git" }
+libc = "0.2.41"
 
 [dependencies]
 cfg-if = "0.1"
