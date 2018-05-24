@@ -1012,12 +1012,18 @@ impl UdpSocketExt for UdpSocket {
             .map(|b| b as u32)
     }
 
-    fn set_multicast_hops_v6(&self, hops: u32) -> io::Result<()> {
+    fn set_multicast_hops_v6(&self, _hops: u32) -> io::Result<()> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS,
-               hops as c_int)
+               _hops as c_int)
     }
 
     fn multicast_hops_v6(&self) -> io::Result<u32> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
         get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS)
             .map(|b| b as u32)
     }
@@ -1031,19 +1037,31 @@ impl UdpSocketExt for UdpSocket {
             .map(int2bool)
     }
 
-    fn set_multicast_if_v4(&self, interface: &Ipv4Addr) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF, ip2in_addr(interface))
+    fn set_multicast_if_v4(&self, _interface: &Ipv4Addr) -> io::Result<()> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
+        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF, ip2in_addr(_interface))
     }
 
     fn multicast_if_v4(&self) -> io::Result<Ipv4Addr> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
         get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF).map(in_addr2ip)
     }
 
-    fn set_multicast_if_v6(&self, interface: u32) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF, to_ipv6mr_interface(interface))
+    fn set_multicast_if_v6(&self, _interface: u32) -> io::Result<()> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF, to_ipv6mr_interface(_interface))
     }
 
     fn multicast_if_v6(&self) -> io::Result<u32> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
         get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF).map(|b| b as u32)
     }
 
@@ -1056,11 +1074,17 @@ impl UdpSocketExt for UdpSocket {
             .map(|b| b as u32)
     }
 
-    fn set_unicast_hops_v6(&self, ttl: u32) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_UNICAST_HOPS, ttl as c_int)
+    fn set_unicast_hops_v6(&self, _ttl: u32) -> io::Result<()> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_UNICAST_HOPS, _ttl as c_int)
     }
 
     fn unicast_hops_v6(&self) -> io::Result<u32> {
+        #[cfg(target_os = "redox")]
+        return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
+        #[cfg(not(target_os = "redox"))]
         get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IPV6_UNICAST_HOPS)
             .map(|b| b as u32)
     }
