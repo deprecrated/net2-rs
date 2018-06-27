@@ -1,5 +1,5 @@
 language: rust
-sudo: false
+sudo: required
 
 matrix:
   include:
@@ -19,6 +19,15 @@ matrix:
         - cargo doc --no-deps --all-features
       after_success:
         - travis-cargo doc-upload
+
+before_install:
+  # FIXME: these two commands are required to enable IPv6,
+  # they shouldn't exist, please revert once more official solutions appeared.
+  # see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
+  - if [ "$TRAVIS_OS_NAME" = linux ]; then
+      echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json;
+      sudo service docker restart;
+    fi
 
 script:
   - cargo test
