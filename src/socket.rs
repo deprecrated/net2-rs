@@ -12,6 +12,8 @@ use std::fmt;
 use std::io;
 use std::mem;
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+#[cfg(target_os = "redox")]
+use libc::c_int;
 #[cfg(unix)]
 use libc::c_int;
 #[cfg(windows)]
