@@ -844,7 +844,11 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        if get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)? != only_v6 {
+            set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        } else {
+            Ok(())
+        }
     }
 
     fn only_v6(&self) -> io::Result<bool> {
@@ -1090,7 +1094,11 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        if get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)? != only_v6 {
+            set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        } else {
+            Ok(())
+        }
     }
 
     fn only_v6(&self) -> io::Result<bool> {
@@ -1374,7 +1382,11 @@ impl TcpListenerExt for TcpListener {
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        if get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)? != only_v6 {
+            set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        } else {
+            Ok(())
+        }
     }
 
     fn only_v6(&self) -> io::Result<bool> {
@@ -1415,8 +1427,12 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
-            .map(|()| self)
+        if get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)? != only_v6 {
+            set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+                .map(|()| self)
+        } else {
+            Ok(self)
+        }
     }
 
     /// Set value for the `SO_REUSEADDR` option on this socket.
@@ -1471,8 +1487,12 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
-            .map(|()| self)
+        if get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)? != only_v6 {
+            set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+                .map(|()| self)
+        } else {
+            Ok(self)
+        }
     }
 
     /// Set value for the `SO_REUSEADDR` option on this socket.
