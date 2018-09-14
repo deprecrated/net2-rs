@@ -1421,7 +1421,7 @@ impl TcpBuilder {
 
     /// Set value for the `SO_REUSEADDR` option on this socket.
     ///
-    /// This indicates that futher calls to `bind` may allow reuse of local
+    /// This indicates that further calls to `bind` may allow reuse of local
     /// addresses. For IPv4 sockets this means that a socket may bind even when
     /// there's a socket already listening on this port.
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
