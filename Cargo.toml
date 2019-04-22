@@ -21,7 +21,7 @@ include = [
 [target."cfg(windows)".dependencies]
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
-[target.'cfg(any(target_os="redox", unix, target_os="wasi"))'.dependencies]
+[target.'cfg(any(unix, target_os="wasi"))'.dependencies]
 libc = "0.2.54"
 
 [dependencies]
