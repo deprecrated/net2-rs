@@ -25,7 +25,6 @@ pub mod c {
     pub type in_port_t = u16;
 
     pub const SOCK_DGRAM: c_int = 0x00;
-    pub const SO_REUSEPORT: c_int = 0x0;
     pub const SOL_SOCKET: c_int = 0x00;
     pub const SO_RCVBUF: c_int = 0x00;
     pub const SO_SNDBUF: c_int = 0x00;
