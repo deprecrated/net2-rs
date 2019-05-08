@@ -43,7 +43,7 @@ use std::time::Duration;
 #[cfg(target_os = "wasi")] use std::os::wasi::prelude::*;
 #[cfg(target_os = "redox")] pub type Socket = usize;
 #[cfg(unix)] pub type Socket = c_int;
-#[cfg(any(unix, target_os = "wasi"))] pub type Socket = std::os::wasi::io::RawFd;
+#[cfg(target_os = "wasi")] pub type Socket = std::os::wasi::io::RawFd;
 #[cfg(windows)] pub type Socket = SOCKET;
 #[cfg(windows)] use std::os::windows::prelude::*;
 #[cfg(any(windows, target_os = "wasi"))] use sys::c::*;
