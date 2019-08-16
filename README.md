@@ -1,6 +1,6 @@
 # net2
 
-[![Build Status](https://travis-ci.org/rust-lang-nursery/net2-rs.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/net2-rs)
+[![Build Status](https://travis-ci.com/rust-lang-nursery/net2-rs.svg?branch=master)](https://travis-ci.com/rust-lang-nursery/net2-rs)
 [![Build status](https://ci.appveyor.com/api/projects/status/ns78f02jt2uvd2lp?svg=true)](https://ci.appveyor.com/project/alexcrichton/net2-rs)
 
 [Documentation](https://docs.rs/net2/0.2.32/net2/)
@@ -22,9 +22,9 @@ net2 = "0.2"
 This project is licensed under either of
 
  * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
+   https://www.apache.org/licenses/LICENSE-2.0)
  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT)
+   https://opensource.org/licenses/MIT)
 
 at your option.
 
