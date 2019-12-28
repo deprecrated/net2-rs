@@ -72,7 +72,7 @@ pub use udp::UdpBuilder;
 pub use ext::{TcpStreamExt, TcpListenerExt, UdpSocketExt};
 
 fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
-    let mut addrs = try!(tsa.to_socket_addrs());
+    let mut addrs = tsa.to_socket_addrs()?;
     let addr = match addrs.next() {
         Some(addr) => addr,
         None => return Err(io::Error::new(io::ErrorKind::Other,

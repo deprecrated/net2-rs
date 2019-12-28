@@ -73,8 +73,8 @@ pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
         let payload = &payload as *const T as *const c_void;
         #[cfg(target_os = "redox")]
         let sock = sock as c_int;
-        try!(::cvt(setsockopt(sock, opt, val, payload as *const _,
-                              mem::size_of::<T>() as socklen_t)));
+        ::cvt(setsockopt(sock, opt, val, payload as *const _,
+                              mem::size_of::<T>() as socklen_t))?;
     }
     Ok(())
 }
@@ -90,9 +90,9 @@ pub fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
         let mut len = mem::size_of::<T>() as socklen_t;
         #[cfg(target_os = "redox")]
         let sock = sock as c_int;
-        try!(::cvt(getsockopt(sock, opt, val,
+        ::cvt(getsockopt(sock, opt, val,
                               &mut slot as *mut _ as *mut _,
-                              &mut len)));
+                              &mut len))?;
         assert_eq!(len as usize, mem::size_of::<T>());
         Ok(slot)
     }
@@ -715,47 +715,47 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(target_os = "redox")]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
-                    keepalive.is_some() as c_int));
+        set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
+                    keepalive.is_some() as c_int)?;
         if let Some(dur) = keepalive {
-            try!(set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
-                        (dur / 1000) as c_int));
+            set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
+                        (dur / 1000) as c_int)?;
         }
         Ok(())
     }
 
     #[cfg(target_os = "redox")]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
-                                             SO_KEEPALIVE));
+        let keepalive = get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
+                                             SO_KEEPALIVE)?;
         if keepalive == 0 {
             return Ok(None)
         }
-        let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
-                                        KEEPALIVE_OPTION));
+        let secs = get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
+                                        KEEPALIVE_OPTION)?;
         Ok(Some((secs as u32) * 1000))
     }
 
     #[cfg(unix)]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
-                    keepalive.is_some() as c_int));
+        set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
+                    keepalive.is_some() as c_int)?;
         if let Some(dur) = keepalive {
-            try!(set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
-                        (dur / 1000) as c_int));
+            set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
+                        (dur / 1000) as c_int)?;
         }
         Ok(())
     }
 
     #[cfg(unix)]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
-                                             SO_KEEPALIVE));
+        let keepalive = get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
+                                             SO_KEEPALIVE)?;
         if keepalive == 0 {
             return Ok(None)
         }
-        let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
-                                        KEEPALIVE_OPTION));
+        let secs = get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
+                                        KEEPALIVE_OPTION)?;
         Ok(Some((secs as u32) * 1000))
     }
 
@@ -798,7 +798,7 @@ impl TcpStreamExt for TcpStream {
             keepaliveinterval: 0,
         };
         unsafe {
-            try!(::cvt_win(WSAIoctl(self.as_sock(),
+            ::cvt_win(WSAIoctl(self.as_sock(),
                                     SIO_KEEPALIVE_VALS,
                                     0 as *mut _,
                                     0,
@@ -806,7 +806,7 @@ impl TcpStreamExt for TcpStream {
                                     mem::size_of_val(&ka) as DWORD,
                                     0 as *mut _,
                                     0 as *mut _,
-                                    None)));
+                                    None))?;
         }
         Ok({
             if ka.onoff == 0 {
@@ -1290,7 +1290,7 @@ impl UdpSocketExt for UdpSocket {
 fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
     let err = io::Error::new(io::ErrorKind::Other,
                              "no socket addresses resolved");
-    let addrs = try!(addr.to_socket_addrs());
+    let addrs = addr.to_socket_addrs()?;
     let sys = sys::Socket::from_inner(sock);
     let sock = socket::Socket::from_inner(sys);
     let ret = addrs.fold(Err(err), |prev, addr| {

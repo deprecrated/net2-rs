@@ -50,10 +50,10 @@ impl UdpBuilder {
     pub fn bind<T>(&self, addr: T) -> io::Result<UdpSocket>
         where T: ToSocketAddrs
     {
-        try!(self.with_socket(|sock| {
-            let addr = try!(::one_addr(addr));
+        self.with_socket(|sock| {
+            let addr = ::one_addr(addr)?;
             sock.bind(&addr)
-        }));
+        })?;
         Ok(self.socket.borrow_mut().take().unwrap().into_inner().into_udp_socket())
     }
 

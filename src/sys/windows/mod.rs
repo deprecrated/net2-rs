@@ -70,14 +70,14 @@ pub struct Socket {
 impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         init();
-        let socket = try!(unsafe {
+        let socket = unsafe {
             match WSASocketW(family, ty, 0, 0 as *mut _, 0,
                              WSA_FLAG_OVERLAPPED) {
                 INVALID_SOCKET => Err(io::Error::last_os_error()),
                 n => Ok(Socket { socket: n }),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
