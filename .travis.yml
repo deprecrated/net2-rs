@@ -10,7 +10,7 @@ matrix:
     - rust: nightly
       script:
         - cargo test
-        - cargo test --feature snightly
+        - cargo test --features nightly
 
     - rust: nightly
       before_script:
