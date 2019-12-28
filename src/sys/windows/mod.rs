@@ -14,7 +14,7 @@ use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::windows::io::{RawSocket, FromRawSocket};
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
 const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
@@ -53,7 +53,7 @@ use self::c::*;
 mod impls;
 
 fn init() {
-    static INIT: Once = ONCE_INIT;
+    static INIT: Once = Once::new();
 
     INIT.call_once(|| {
         // Initialize winsock through the standard library by just creating a
