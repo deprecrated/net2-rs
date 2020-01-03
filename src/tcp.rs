@@ -52,7 +52,7 @@ impl TcpBuilder {
         T: ToSocketAddrs,
     {
         self.with_socket(|sock| {
-            let addr = try!(::one_addr(addr));
+            let addr = ::one_addr(addr)?;
             sock.bind(&addr)
         })
         .map(|()| self)
@@ -84,7 +84,7 @@ impl TcpBuilder {
     {
         self.with_socket(|sock| {
             let err = io::Error::new(io::ErrorKind::Other, "no socket addresses resolved");
-            try!(addr.to_socket_addrs())
+            addr.to_socket_addrs()?
                 .fold(Err(err), |prev, addr| prev.or_else(|_| sock.connect(&addr)))
         })
         .and_then(|()| self.to_tcp_stream())

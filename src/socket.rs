@@ -27,7 +27,7 @@ pub struct Socket {
 impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         Ok(Socket {
-            inner: try!(sys::Socket::new(family, ty)),
+            inner: sys::Socket::new(family, ty)?,
         })
     }
 
@@ -49,11 +49,11 @@ impl Socket {
         unsafe {
             let mut storage: c::sockaddr_storage = mem::zeroed();
             let mut len = mem::size_of_val(&storage) as c::socklen_t;
-            try!(::cvt(c::getsockname(
+            ::cvt(c::getsockname(
                 self.inner.raw(),
                 &mut storage as *mut _ as *mut _,
-                &mut len
-            )));
+                &mut len,
+            ))?;
             raw2addr(&storage, len)
         }
     }

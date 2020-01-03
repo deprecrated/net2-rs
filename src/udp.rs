@@ -51,10 +51,10 @@ impl UdpBuilder {
     where
         T: ToSocketAddrs,
     {
-        try!(self.with_socket(|sock| {
-            let addr = try!(::one_addr(addr));
+        self.with_socket(|sock| {
+            let addr = ::one_addr(addr)?;
             sock.bind(&addr)
-        }));
+        })?;
         Ok(self
             .socket
             .borrow_mut()

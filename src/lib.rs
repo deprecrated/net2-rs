@@ -85,7 +85,7 @@ pub use tcp::TcpBuilder;
 pub use udp::UdpBuilder;
 
 fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
-    let mut addrs = try!(tsa.to_socket_addrs());
+    let mut addrs = tsa.to_socket_addrs()?;
     let addr = match addrs.next() {
         Some(addr) => addr,
         None => {
