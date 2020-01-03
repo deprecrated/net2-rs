@@ -9,16 +9,18 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
-use libc::{self, __wasi_fd_t, c_int};
+use libc::c_int;
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::wasi::io::FromRawFd;
+use wasi::Fd;
 
 mod impls;
 
 pub mod c {
     pub use libc::*;
+    pub use wasi::Fd;
 
     pub type sa_family_t = u16;
     pub type socklen_t = u32;
@@ -113,27 +115,19 @@ pub mod c {
     }
 
     pub unsafe fn getsockname(
-        _socket: __wasi_fd_t,
+        _socket: Fd,
         _address: *mut sockaddr,
         _address_len: *mut socklen_t,
     ) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn connect(
-        _socket: __wasi_fd_t,
-        _address: *const sockaddr,
-        _len: socklen_t,
-    ) -> c_int {
+    pub unsafe fn connect(_socket: Fd, _address: *const sockaddr, _len: socklen_t) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn listen(_socket: __wasi_fd_t, _backlog: c_int) -> c_int {
+    pub unsafe fn listen(_socket: Fd, _backlog: c_int) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn bind(
-        _socket: __wasi_fd_t,
-        _address: *const sockaddr,
-        _address_len: socklen_t,
-    ) -> c_int {
+    pub unsafe fn bind(_socket: Fd, _address: *const sockaddr, _address_len: socklen_t) -> c_int {
         unimplemented!()
     }
 
@@ -147,7 +141,7 @@ pub mod c {
 }
 
 pub struct Socket {
-    fd: __wasi_fd_t,
+    fd: Fd,
 }
 
 impl Socket {
@@ -155,11 +149,11 @@ impl Socket {
         unimplemented!()
     }
 
-    pub fn raw(&self) -> libc::__wasi_fd_t {
+    pub fn raw(&self) -> Fd {
         self.fd
     }
 
-    fn into_fd(self) -> libc::__wasi_fd_t {
+    fn into_fd(self) -> Fd {
         let fd = self.fd;
         mem::forget(self);
         fd
@@ -179,8 +173,8 @@ impl Socket {
 }
 
 impl ::FromInner for Socket {
-    type Inner = libc::__wasi_fd_t;
-    fn from_inner(fd: libc::__wasi_fd_t) -> Socket {
+    type Inner = Fd;
+    fn from_inner(fd: Fd) -> Socket {
         Socket { fd: fd }
     }
 }

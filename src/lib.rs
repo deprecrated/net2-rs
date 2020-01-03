@@ -47,6 +47,9 @@
 #[cfg(any(target_os = "redox", target_os = "wasi", unix))]
 extern crate libc;
 
+#[cfg(target_os = "wasi")]
+extern crate wasi;
+
 #[cfg(windows)]
 extern crate winapi;
 
