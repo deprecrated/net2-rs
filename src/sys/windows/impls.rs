@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os::windows::io::{FromRawSocket, RawSocket, AsRawSocket};
+use std::os::windows::io::{AsRawSocket, FromRawSocket, RawSocket};
 use winapi::um::winsock2::SOCKET;
 
-use {TcpBuilder, UdpBuilder, FromInner, AsInner};
 use socket::Socket;
 use sys;
+use {AsInner, FromInner, TcpBuilder, UdpBuilder};
 
 impl FromRawSocket for TcpBuilder {
     unsafe fn from_raw_socket(fd: RawSocket) -> TcpBuilder {

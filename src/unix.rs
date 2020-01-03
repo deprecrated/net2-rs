@@ -3,8 +3,8 @@
 use std::io;
 use sys::c::{self, c_int};
 
-use {TcpBuilder, UdpBuilder};
 use ext::{self, AsSock};
+use {TcpBuilder, UdpBuilder};
 
 /// Unix-specific extensions for the `TcpBuilder` type in this library.
 pub trait UnixTcpBuilderExt {
@@ -21,13 +21,17 @@ pub trait UnixTcpBuilderExt {
 
 impl UnixTcpBuilderExt for TcpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::set_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT,
-                    reuse as c_int).map(|()| self)
+        ext::set_opt(
+            self.as_sock(),
+            c::SOL_SOCKET,
+            c::SO_REUSEPORT,
+            reuse as c_int,
+        )
+        .map(|()| self)
     }
 
     fn get_reuse_port(&self) -> io::Result<bool> {
-        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT)
-            .map(ext::int2bool)
+        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT).map(ext::int2bool)
     }
 }
 
@@ -46,12 +50,16 @@ pub trait UnixUdpBuilderExt {
 
 impl UnixUdpBuilderExt for UdpBuilder {
     fn reuse_port(&self, reuse: bool) -> io::Result<&Self> {
-        ext::set_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT,
-                    reuse as c_int).map(|()| self)
+        ext::set_opt(
+            self.as_sock(),
+            c::SOL_SOCKET,
+            c::SO_REUSEPORT,
+            reuse as c_int,
+        )
+        .map(|()| self)
     }
 
     fn get_reuse_port(&self) -> io::Result<bool> {
-        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT)
-            .map(ext::int2bool)
+        ext::get_opt(self.as_sock(), c::SOL_SOCKET, c::SO_REUSEPORT).map(ext::int2bool)
     }
 }

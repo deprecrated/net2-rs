@@ -12,13 +12,13 @@
 
 use std::io;
 use std::mem;
-use std::net::{TcpStream, TcpListener, UdpSocket, Ipv4Addr, Ipv6Addr};
 use std::net::ToSocketAddrs;
+use std::net::{Ipv4Addr, Ipv6Addr, TcpListener, TcpStream, UdpSocket};
 
-use {TcpBuilder, UdpBuilder, FromInner};
+use socket;
 use sys;
 use sys::c;
-use socket;
+use {FromInner, TcpBuilder, UdpBuilder};
 
 cfg_if! {
     if #[cfg(any(target_os = "dragonfly",
@@ -38,17 +38,27 @@ cfg_if! {
 
 use std::time::Duration;
 
-#[cfg(any(unix, target_os = "redox", target_os = "wasi"))] use libc::*;
-#[cfg(any(unix, target_os = "redox"))] use std::os::unix::prelude::*;
-#[cfg(target_os = "wasi")] use std::os::wasi::prelude::*;
-#[cfg(target_os = "redox")] pub type Socket = usize;
-#[cfg(unix)] pub type Socket = c_int;
-#[cfg(target_os = "wasi")] pub type Socket = std::os::wasi::io::RawFd;
-#[cfg(windows)] pub type Socket = SOCKET;
-#[cfg(windows)] use std::os::windows::prelude::*;
-#[cfg(any(windows, target_os = "wasi"))] use sys::c::*;
+#[cfg(any(unix, target_os = "redox", target_os = "wasi"))]
+use libc::*;
+#[cfg(any(unix, target_os = "redox"))]
+use std::os::unix::prelude::*;
+#[cfg(target_os = "wasi")]
+use std::os::wasi::prelude::*;
+#[cfg(target_os = "redox")]
+pub type Socket = usize;
+#[cfg(unix)]
+pub type Socket = c_int;
+#[cfg(target_os = "wasi")]
+pub type Socket = std::os::wasi::io::RawFd;
+#[cfg(windows)]
+pub type Socket = SOCKET;
+#[cfg(windows)]
+use std::os::windows::prelude::*;
+#[cfg(any(windows, target_os = "wasi"))]
+use sys::c::*;
 
-#[cfg(windows)] const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
+#[cfg(windows)]
+const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
 #[cfg(windows)]
 #[repr(C)]
 struct tcp_keepalive {
@@ -57,24 +67,33 @@ struct tcp_keepalive {
     keepaliveinterval: c_ulong,
 }
 
-#[cfg(any(unix, target_os = "redox", target_os = "wasi"))] fn v(opt: c_int) -> c_int { opt }
-#[cfg(windows)] fn v(opt: IPPROTO) -> c_int { opt as c_int }
+#[cfg(any(unix, target_os = "redox", target_os = "wasi"))]
+fn v(opt: c_int) -> c_int {
+    opt
+}
+#[cfg(windows)]
+fn v(opt: IPPROTO) -> c_int {
+    opt as c_int
+}
 
 #[cfg(target_os = "wasi")]
-pub fn set_opt<T: Copy>(_sock: Socket, _opt: c_int, _val: c_int,
-                       _payload: T) -> io::Result<()> { 
+pub fn set_opt<T: Copy>(_sock: Socket, _opt: c_int, _val: c_int, _payload: T) -> io::Result<()> {
     Ok(())
 }
 
 #[cfg(not(target_os = "wasi"))]
-pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int,
-                       payload: T) -> io::Result<()> {
+pub fn set_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int, payload: T) -> io::Result<()> {
     unsafe {
         let payload = &payload as *const T as *const c_void;
         #[cfg(target_os = "redox")]
         let sock = sock as c_int;
-        try!(::cvt(setsockopt(sock, opt, val, payload as *const _,
-                              mem::size_of::<T>() as socklen_t)));
+        try!(::cvt(setsockopt(
+            sock,
+            opt,
+            val,
+            payload as *const _,
+            mem::size_of::<T>() as socklen_t
+        )));
     }
     Ok(())
 }
@@ -90,9 +109,13 @@ pub fn get_opt<T: Copy>(sock: Socket, opt: c_int, val: c_int) -> io::Result<T> {
         let mut len = mem::size_of::<T>() as socklen_t;
         #[cfg(target_os = "redox")]
         let sock = sock as c_int;
-        try!(::cvt(getsockopt(sock, opt, val,
-                              &mut slot as *mut _ as *mut _,
-                              &mut len)));
+        try!(::cvt(getsockopt(
+            sock,
+            opt,
+            val,
+            &mut slot as *mut _ as *mut _,
+            &mut len
+        )));
         assert_eq!(len as usize, mem::size_of::<T>());
         Ok(slot)
     }
@@ -467,7 +490,6 @@ pub trait UdpSocketExt {
     /// Returns the interface to use for routing multicast packets.
     fn multicast_if_v4(&self) -> io::Result<Ipv4Addr>;
 
-
     /// Sets the value of the `IPV6_MULTICAST_IF` option for this socket.
     ///
     /// Specifies the interface to use for routing multicast packets.
@@ -526,16 +548,14 @@ pub trait UdpSocketExt {
     /// address of the local interface with which the system should join the
     /// multicast group. If it's equal to `INADDR_ANY` then an appropriate
     /// interface is chosen by the system.
-    fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
-                         -> io::Result<()>;
+    fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()>;
 
     /// Executes an operation of the `IPV6_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.
     /// The address must be a valid multicast address, and `interface` is the
     /// index of the interface to join/leave (or 0 to indicate any interface).
-    fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
-                         -> io::Result<()>;
+    fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()>;
 
     /// Executes an operation of the `IP_DROP_MEMBERSHIP` type.
     ///
@@ -543,8 +563,7 @@ pub trait UdpSocketExt {
     /// [`join_multicast_v4`][link].
     ///
     /// [link]: #tymethod.join_multicast_v4
-    fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
-                          -> io::Result<()>;
+    fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()>;
 
     /// Executes an operation of the `IPV6_DROP_MEMBERSHIP` type.
     ///
@@ -552,8 +571,7 @@ pub trait UdpSocketExt {
     /// [`join_multicast_v6`][link].
     ///
     /// [link]: #tymethod.join_multicast_v6
-    fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
-                          -> io::Result<()>;
+    fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()>;
 
     /// Sets the `SO_RCVTIMEO` option for this socket.
     ///
@@ -656,11 +674,15 @@ pub trait AsSock {
 
 #[cfg(any(unix, target_os = "redox", target_os = "wasi"))]
 impl<T: AsRawFd> AsSock for T {
-    fn as_sock(&self) -> Socket { self.as_raw_fd() }
+    fn as_sock(&self) -> Socket {
+        self.as_raw_fd()
+    }
 }
 #[cfg(windows)]
 impl<T: AsRawSocket> AsSock for T {
-    fn as_sock(&self) -> Socket { self.as_raw_socket() as Socket }
+    fn as_sock(&self) -> Socket {
+        self.as_raw_socket() as Socket
+    }
 }
 
 cfg_if! {
@@ -678,7 +700,6 @@ cfg_if! {
 }
 
 impl TcpStreamExt for TcpStream {
-
     fn set_recv_buffer_size(&self, size: usize) -> io::Result<()> {
         // TODO: casting usize to a c_int should be a checked cast
         set_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF, size as c_int)
@@ -697,12 +718,15 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY,
-               nodelay as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_TCP),
+            TCP_NODELAY,
+            nodelay as c_int,
+        )
     }
     fn nodelay(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY)
-            .map(int2bool)
+        get_opt(self.as_sock(), v(IPPROTO_TCP), TCP_NODELAY).map(int2bool)
     }
 
     fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
@@ -715,51 +739,71 @@ impl TcpStreamExt for TcpStream {
 
     #[cfg(target_os = "redox")]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
-                    keepalive.is_some() as c_int));
+        try!(set_opt(
+            self.as_sock(),
+            SOL_SOCKET,
+            SO_KEEPALIVE,
+            keepalive.is_some() as c_int
+        ));
         if let Some(dur) = keepalive {
-            try!(set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
-                        (dur / 1000) as c_int));
+            try!(set_opt(
+                self.as_sock(),
+                v(IPPROTO_TCP),
+                KEEPALIVE_OPTION,
+                (dur / 1000) as c_int
+            ));
         }
         Ok(())
     }
 
     #[cfg(target_os = "redox")]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
-                                             SO_KEEPALIVE));
+        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE));
         if keepalive == 0 {
-            return Ok(None)
+            return Ok(None);
         }
-        let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
-                                        KEEPALIVE_OPTION));
+        let secs = try!(get_opt::<c_int>(
+            self.as_sock(),
+            v(IPPROTO_TCP),
+            KEEPALIVE_OPTION
+        ));
         Ok(Some((secs as u32) * 1000))
     }
 
     #[cfg(unix)]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
-                    keepalive.is_some() as c_int));
+        try!(set_opt(
+            self.as_sock(),
+            SOL_SOCKET,
+            SO_KEEPALIVE,
+            keepalive.is_some() as c_int
+        ));
         if let Some(dur) = keepalive {
-            try!(set_opt(self.as_sock(), v(IPPROTO_TCP), KEEPALIVE_OPTION,
-                        (dur / 1000) as c_int));
+            try!(set_opt(
+                self.as_sock(),
+                v(IPPROTO_TCP),
+                KEEPALIVE_OPTION,
+                (dur / 1000) as c_int
+            ));
         }
         Ok(())
     }
 
     #[cfg(unix)]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
-                                             SO_KEEPALIVE));
+        let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE));
         if keepalive == 0 {
-            return Ok(None)
+            return Ok(None);
         }
-        let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
-                                        KEEPALIVE_OPTION));
+        let secs = try!(get_opt::<c_int>(
+            self.as_sock(),
+            v(IPPROTO_TCP),
+            KEEPALIVE_OPTION
+        ));
         Ok(Some((secs as u32) * 1000))
     }
 
-     #[cfg(target_os = "wasi")]
+    #[cfg(target_os = "wasi")]
     fn set_keepalive_ms(&self, _keepalive: Option<u32>) -> io::Result<()> {
         unimplemented!()
     }
@@ -778,15 +822,18 @@ impl TcpStreamExt for TcpStream {
             keepaliveinterval: ms as c_ulong,
         };
         unsafe {
-            ::cvt_win(WSAIoctl(self.as_sock(),
-                               SIO_KEEPALIVE_VALS,
-                               &ka as *const _ as *mut _,
-                               mem::size_of_val(&ka) as DWORD,
-                               0 as *mut _,
-                               0,
-                               0 as *mut _,
-                               0 as *mut _,
-                               None)).map(|_| ())
+            ::cvt_win(WSAIoctl(
+                self.as_sock(),
+                SIO_KEEPALIVE_VALS,
+                &ka as *const _ as *mut _,
+                mem::size_of_val(&ka) as DWORD,
+                0 as *mut _,
+                0,
+                0 as *mut _,
+                0 as *mut _,
+                None,
+            ))
+            .map(|_| ())
         }
     }
 
@@ -798,15 +845,17 @@ impl TcpStreamExt for TcpStream {
             keepaliveinterval: 0,
         };
         unsafe {
-            try!(::cvt_win(WSAIoctl(self.as_sock(),
-                                    SIO_KEEPALIVE_VALS,
-                                    0 as *mut _,
-                                    0,
-                                    &mut ka as *mut _ as *mut _,
-                                    mem::size_of_val(&ka) as DWORD,
-                                    0 as *mut _,
-                                    0 as *mut _,
-                                    None)));
+            try!(::cvt_win(WSAIoctl(
+                self.as_sock(),
+                SIO_KEEPALIVE_VALS,
+                0 as *mut _,
+                0,
+                &mut ka as *mut _ as *mut _,
+                mem::size_of_val(&ka) as DWORD,
+                0 as *mut _,
+                0 as *mut _,
+                None
+            )));
         }
         Ok({
             if ka.onoff == 0 {
@@ -818,23 +867,19 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO,
-               ms2timeout(dur))
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO, ms2timeout(dur))
     }
 
     fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO)
-            .map(timeout2ms)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO).map(timeout2ms)
     }
 
     fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO,
-               ms2timeout(dur))
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO, ms2timeout(dur))
     }
 
     fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO)
-            .map(timeout2ms)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO).map(timeout2ms)
     }
 
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
@@ -858,12 +903,16 @@ impl TcpStreamExt for TcpStream {
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL).map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_V6ONLY,
+            only_v6 as c_int,
+        )
     }
 
     fn only_v6(&self) -> io::Result<bool> {
@@ -899,7 +948,10 @@ fn ms2timeout(dur: Option<u32>) -> timeval {
             tv_sec: (d / 1000) as time_t,
             tv_usec: (d % 1000) as suseconds_t,
         },
-        None => timeval { tv_sec: 0, tv_usec: 0 },
+        None => timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        },
     }
 }
 
@@ -929,8 +981,7 @@ fn timeout2ms(dur: DWORD) -> Option<u32> {
 fn linger2dur(linger_opt: linger) -> Option<Duration> {
     if linger_opt.l_onoff == 0 {
         None
-    }
-    else {
+    } else {
         Some(Duration::from_secs(linger_opt.l_linger as u64))
     }
 }
@@ -938,26 +989,28 @@ fn linger2dur(linger_opt: linger) -> Option<Duration> {
 #[cfg(windows)]
 fn dur2linger(dur: Option<Duration>) -> linger {
     match dur {
-        Some(d) => {
-            linger {
-                l_onoff: 1,
-                l_linger: d.as_secs() as u16,
-            }
+        Some(d) => linger {
+            l_onoff: 1,
+            l_linger: d.as_secs() as u16,
         },
-        None => linger { l_onoff: 0, l_linger: 0 },
+        None => linger {
+            l_onoff: 0,
+            l_linger: 0,
+        },
     }
 }
 
 #[cfg(any(target_os = "redox", unix, target_os = "wasi"))]
 fn dur2linger(dur: Option<Duration>) -> linger {
     match dur {
-        Some(d) => {
-            linger {
-                l_onoff: 1,
-                l_linger: d.as_secs() as c_int,
-            }
+        Some(d) => linger {
+            l_onoff: 1,
+            l_linger: d.as_secs() as c_int,
         },
-        None => linger { l_onoff: 0, l_linger: 0 },
+        None => linger {
+            l_onoff: 0,
+            l_linger: 0,
+        },
     }
 }
 
@@ -970,7 +1023,11 @@ fn dur2ms(dur: Duration) -> u32 {
 }
 
 pub fn int2bool(n: c_int) -> bool {
-    if n == 0 {false} else {true}
+    if n == 0 {
+        false
+    } else {
+        true
+    }
 }
 
 pub fn int2usize(n: c_int) -> usize {
@@ -987,7 +1044,6 @@ pub fn int2err(n: c_int) -> Option<io::Error> {
 }
 
 impl UdpSocketExt for UdpSocket {
-
     fn set_recv_buffer_size(&self, size: usize) -> io::Result<()> {
         set_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF, size as c_int)
     }
@@ -1005,62 +1061,77 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST,
-               broadcast as c_int)
+        set_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST, broadcast as c_int)
     }
     fn broadcast(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST)
-            .map(int2bool)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_BROADCAST).map(int2bool)
     }
     fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP,
-               multicast_loop_v4 as c_int)
+        set_opt(
+            self.as_sock(),
+            IPPROTO_IP,
+            IP_MULTICAST_LOOP,
+            multicast_loop_v4 as c_int,
+        )
     }
     fn multicast_loop_v4(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP)
-            .map(int2bool)
+        get_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_LOOP).map(int2bool)
     }
 
     fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL,
-               multicast_ttl_v4 as c_int)
+        set_opt(
+            self.as_sock(),
+            IPPROTO_IP,
+            IP_MULTICAST_TTL,
+            multicast_ttl_v4 as c_int,
+        )
     }
-    
+
     fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_MULTICAST_TTL).map(|b| b as u32)
     }
 
     fn set_multicast_hops_v6(&self, _hops: u32) -> io::Result<()> {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS,
-               _hops as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_MULTICAST_HOPS,
+            _hops as c_int,
+        )
     }
 
     fn multicast_hops_v6(&self) -> io::Result<u32> {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_HOPS).map(|b| b as u32)
     }
 
     fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP,
-               multicast_loop_v6 as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_MULTICAST_LOOP,
+            multicast_loop_v6 as c_int,
+        )
     }
     fn multicast_loop_v6(&self) -> io::Result<bool> {
-        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP)
-            .map(int2bool)
+        get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_LOOP).map(int2bool)
     }
 
     fn set_multicast_if_v4(&self, _interface: &Ipv4Addr) -> io::Result<()> {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        set_opt(self.as_sock(), IPPROTO_IP, IP_MULTICAST_IF, ip2in_addr(_interface))
+        set_opt(
+            self.as_sock(),
+            IPPROTO_IP,
+            IP_MULTICAST_IF,
+            ip2in_addr(_interface),
+        )
     }
 
     fn multicast_if_v4(&self) -> io::Result<Ipv4Addr> {
@@ -1074,7 +1145,12 @@ impl UdpSocketExt for UdpSocket {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_MULTICAST_IF, to_ipv6mr_interface(_interface))
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_MULTICAST_IF,
+            to_ipv6mr_interface(_interface),
+        )
     }
 
     fn multicast_if_v6(&self) -> io::Result<u32> {
@@ -1089,35 +1165,42 @@ impl UdpSocketExt for UdpSocket {
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL).map(|b| b as u32)
     }
 
     fn set_unicast_hops_v6(&self, _ttl: u32) -> io::Result<()> {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_UNICAST_HOPS, _ttl as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_UNICAST_HOPS,
+            _ttl as c_int,
+        )
     }
 
     fn unicast_hops_v6(&self) -> io::Result<u32> {
         #[cfg(target_os = "redox")]
         return Err(io::Error::new(io::ErrorKind::Other, "Not implemented yet"));
         #[cfg(not(target_os = "redox"))]
-        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IPV6_UNICAST_HOPS)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IPV6_UNICAST_HOPS).map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_V6ONLY,
+            only_v6 as c_int,
+        )
     }
 
     fn only_v6(&self) -> io::Result<bool> {
         get_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY).map(int2bool)
     }
 
-    fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
-                         -> io::Result<()> {
+    fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = ip_mreq {
             imr_multiaddr: ip2in_addr(multiaddr),
             imr_interface: ip2in_addr(interface),
@@ -1125,18 +1208,15 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     }
 
-    fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
-                         -> io::Result<()> {
+    fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP,
-               mreq)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP, mreq)
     }
 
-    fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
-                          -> io::Result<()> {
+    fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = ip_mreq {
             imr_multiaddr: ip2in_addr(multiaddr),
             imr_interface: ip2in_addr(interface),
@@ -1144,34 +1224,28 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
     }
 
-    fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
-                          -> io::Result<()> {
+    fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = ipv6_mreq {
             ipv6mr_multiaddr: ip2in6_addr(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP,
-               mreq)
+        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP, mreq)
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO,
-               ms2timeout(dur))
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO, ms2timeout(dur))
     }
 
     fn read_timeout_ms(&self) -> io::Result<Option<u32>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO)
-            .map(timeout2ms)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVTIMEO).map(timeout2ms)
     }
 
     fn set_write_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO,
-               ms2timeout(dur))
+        set_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO, ms2timeout(dur))
     }
 
     fn write_timeout_ms(&self) -> io::Result<Option<u32>> {
-        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO)
-            .map(timeout2ms)
+        get_opt(self.as_sock(), SOL_SOCKET, SO_SNDTIMEO).map(timeout2ms)
     }
 
     fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
@@ -1201,18 +1275,29 @@ impl UdpSocketExt for UdpSocket {
     #[cfg(target_os = "redox")]
     fn send(&self, buf: &[u8]) -> io::Result<usize> {
         unsafe {
-            ::cvt(write(self.as_sock() as c_int, buf.as_ptr() as *const _, buf.len())).map(|n| n as usize)
+            ::cvt(write(
+                self.as_sock() as c_int,
+                buf.as_ptr() as *const _,
+                buf.len(),
+            ))
+            .map(|n| n as usize)
         }
     }
 
     #[cfg(unix)]
     fn send(&self, buf: &[u8]) -> io::Result<usize> {
         unsafe {
-            ::cvt(send(self.as_sock() as c_int, buf.as_ptr() as *const _, buf.len(), 0)).map(|n| n as usize)
+            ::cvt(send(
+                self.as_sock() as c_int,
+                buf.as_ptr() as *const _,
+                buf.len(),
+                0,
+            ))
+            .map(|n| n as usize)
         }
     }
 
-     #[cfg(target_os = "wasi")]
+    #[cfg(target_os = "wasi")]
     fn send(&self, buf: &[u8]) -> io::Result<usize> {
         let _so_datalen: *mut sys::c::size_t = &mut 0;
         unsafe {
@@ -1233,24 +1318,38 @@ impl UdpSocketExt for UdpSocket {
         let len = ::std::cmp::min(buf.len(), c_int::max_value() as usize);
         let buf = &buf[..len];
         unsafe {
-            ::cvt(send(self.as_sock(), buf.as_ptr() as *const _, len as c_int, 0))
-                .map(|n| n as usize)
+            ::cvt(send(
+                self.as_sock(),
+                buf.as_ptr() as *const _,
+                len as c_int,
+                0,
+            ))
+            .map(|n| n as usize)
         }
     }
 
     #[cfg(target_os = "redox")]
     fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
-            ::cvt(read(self.as_sock() as c_int, buf.as_mut_ptr() as *mut _, buf.len()))
-                .map(|n| n as usize)
+            ::cvt(read(
+                self.as_sock() as c_int,
+                buf.as_mut_ptr() as *mut _,
+                buf.len(),
+            ))
+            .map(|n| n as usize)
         }
     }
 
     #[cfg(unix)]
     fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe {
-            ::cvt(recv(self.as_sock(), buf.as_mut_ptr() as *mut _, buf.len(), 0))
-                .map(|n| n as usize)
+            ::cvt(recv(
+                self.as_sock(),
+                buf.as_mut_ptr() as *mut _,
+                buf.len(),
+                0,
+            ))
+            .map(|n| n as usize)
         }
     }
 
@@ -1277,8 +1376,13 @@ impl UdpSocketExt for UdpSocket {
         let len = ::std::cmp::min(buf.len(), c_int::max_value() as usize);
         let buf = &mut buf[..len];
         unsafe {
-            ::cvt(recv(self.as_sock(), buf.as_mut_ptr() as *mut _, buf.len() as c_int, 0))
-                .map(|n| n as usize)
+            ::cvt(recv(
+                self.as_sock(),
+                buf.as_mut_ptr() as *mut _,
+                buf.len() as c_int,
+                0,
+            ))
+            .map(|n| n as usize)
         }
     }
 
@@ -1288,39 +1392,30 @@ impl UdpSocketExt for UdpSocket {
 }
 
 fn do_connect<A: ToSocketAddrs>(sock: Socket, addr: A) -> io::Result<()> {
-    let err = io::Error::new(io::ErrorKind::Other,
-                             "no socket addresses resolved");
+    let err = io::Error::new(io::ErrorKind::Other, "no socket addresses resolved");
     let addrs = try!(addr.to_socket_addrs());
     let sys = sys::Socket::from_inner(sock);
     let sock = socket::Socket::from_inner(sys);
-    let ret = addrs.fold(Err(err), |prev, addr| {
-        prev.or_else(|_| sock.connect(&addr))
-    });
+    let ret = addrs.fold(Err(err), |prev, addr| prev.or_else(|_| sock.connect(&addr)));
     mem::forget(sock);
-    return ret
+    return ret;
 }
 
 #[cfg(target_os = "redox")]
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
-    let mut flags = ::cvt(unsafe {
-        fcntl(sock as c_int, F_GETFL)
-    })?;
+    let mut flags = ::cvt(unsafe { fcntl(sock as c_int, F_GETFL) })?;
     if nonblocking {
         flags |= O_NONBLOCK;
     } else {
         flags &= !O_NONBLOCK;
     }
-    ::cvt(unsafe {
-        fcntl(sock as c_int, F_SETFL, flags)
-    }).and(Ok(()))
+    ::cvt(unsafe { fcntl(sock as c_int, F_SETFL, flags) }).and(Ok(()))
 }
 
 #[cfg(unix)]
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as c_ulong;
-    ::cvt(unsafe {
-        ioctl(sock, FIONBIO, &mut nonblocking)
-    }).map(|_| ())
+    ::cvt(unsafe { ioctl(sock, FIONBIO, &mut nonblocking) }).map(|_| ())
 }
 
 #[cfg(target_os = "wasi")]
@@ -1331,19 +1426,19 @@ fn set_nonblocking(_sock: Socket, _nonblocking: bool) -> io::Result<()> {
 #[cfg(windows)]
 fn set_nonblocking(sock: Socket, nonblocking: bool) -> io::Result<()> {
     let mut nonblocking = nonblocking as c_ulong;
-    ::cvt(unsafe {
-        ioctlsocket(sock, FIONBIO as c_int, &mut nonblocking)
-    }).map(|_| ())
+    ::cvt(unsafe { ioctlsocket(sock, FIONBIO as c_int, &mut nonblocking) }).map(|_| ())
 }
 
 #[cfg(target_os = "redox")]
 fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
     in_addr {
-        s_addr: ::hton(((oct[0] as u32) << 24) |
-                       ((oct[1] as u32) << 16) |
-                       ((oct[2] as u32) <<  8) |
-                       ((oct[3] as u32) <<  0)),
+        s_addr: ::hton(
+            ((oct[0] as u32) << 24)
+                | ((oct[1] as u32) << 16)
+                | ((oct[2] as u32) << 8)
+                | ((oct[3] as u32) << 0),
+        ),
     }
 }
 
@@ -1351,10 +1446,12 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
 fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
     in_addr {
-        s_addr: ::hton(((oct[0] as u32) << 24) |
-                       ((oct[1] as u32) << 16) |
-                       ((oct[2] as u32) <<  8) |
-                       ((oct[3] as u32) <<  0)),
+        s_addr: ::hton(
+            ((oct[0] as u32) << 24)
+                | ((oct[1] as u32) << 16)
+                | ((oct[2] as u32) << 8)
+                | ((oct[3] as u32) << 0),
+        ),
     }
 }
 
@@ -1363,25 +1460,25 @@ fn ip2in_addr(ip: &Ipv4Addr) -> in_addr {
     let oct = ip.octets();
     unsafe {
         let mut S_un: in_addr_S_un = mem::zeroed();
-        *S_un.S_addr_mut() = ::hton(((oct[0] as u32) << 24) |
-                                ((oct[1] as u32) << 16) |
-                                ((oct[2] as u32) <<  8) |
-                                ((oct[3] as u32) <<  0));
-        in_addr {
-            S_un: S_un,
-        }
+        *S_un.S_addr_mut() = ::hton(
+            ((oct[0] as u32) << 24)
+                | ((oct[1] as u32) << 16)
+                | ((oct[2] as u32) << 8)
+                | ((oct[3] as u32) << 0),
+        );
+        in_addr { S_un: S_un }
     }
 }
 
 fn in_addr2ip(ip: &in_addr) -> Ipv4Addr {
     let h_addr = c::in_addr_to_u32(ip);
-    
+
     let a: u8 = (h_addr >> 24) as u8;
     let b: u8 = (h_addr >> 16) as u8;
     let c: u8 = (h_addr >> 8) as u8;
     let d: u8 = (h_addr >> 0) as u8;
 
-    Ipv4Addr::new(a,b,c,d)
+    Ipv4Addr::new(a, b, c, d)
 }
 
 #[cfg(target_os = "android")]
@@ -1415,10 +1512,16 @@ fn ip2in6_addr(ip: &Ipv6Addr) -> in6_addr {
         (seg[7] >> 8) as u8,
         (seg[7] >> 0) as u8,
     ];
-    #[cfg(windows)] unsafe { *ret.u.Byte_mut() = bytes; }
-    #[cfg(not(windows))]   { ret.s6_addr = bytes; }
+    #[cfg(windows)]
+    unsafe {
+        *ret.u.Byte_mut() = bytes;
+    }
+    #[cfg(not(windows))]
+    {
+        ret.s6_addr = bytes;
+    }
 
-    return ret
+    return ret;
 }
 
 impl TcpListenerExt for TcpListener {
@@ -1427,12 +1530,16 @@ impl TcpListenerExt for TcpListener {
     }
 
     fn ttl(&self) -> io::Result<u32> {
-        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL)
-            .map(|b| b as u32)
+        get_opt::<c_int>(self.as_sock(), IPPROTO_IP, IP_TTL).map(|b| b as u32)
     }
 
     fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_V6ONLY,
+            only_v6 as c_int,
+        )
     }
 
     fn only_v6(&self) -> io::Result<bool> {
@@ -1463,8 +1570,7 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
-        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
-            .map(|()| self)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int).map(|()| self)
     }
 
     /// Sets the value for the `IPV6_V6ONLY` option on this socket.
@@ -1473,8 +1579,13 @@ impl TcpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
-            .map(|()| self)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_V6ONLY,
+            only_v6 as c_int,
+        )
+        .map(|()| self)
     }
 
     /// Set value for the `SO_REUSEADDR` option on this socket.
@@ -1483,8 +1594,7 @@ impl TcpBuilder {
     /// addresses. For IPv4 sockets this means that a socket may bind even when
     /// there's a socket already listening on this port.
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR,
-               reuse as c_int).map(|()| self)
+        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR, reuse as c_int).map(|()| self)
     }
 
     /// Check the `SO_REUSEADDR` option on this socket.
@@ -1519,8 +1629,7 @@ impl UdpBuilder {
     ///
     /// [other]: trait.TcpStreamExt.html#tymethod.set_ttl
     pub fn ttl(&self, ttl: u32) -> io::Result<&Self> {
-        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int)
-            .map(|()| self)
+        set_opt(self.as_sock(), IPPROTO_IP, IP_TTL, ttl as c_int).map(|()| self)
     }
 
     /// Sets the value for the `IPV6_V6ONLY` option on this socket.
@@ -1529,8 +1638,13 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.only_v6
     pub fn only_v6(&self, only_v6: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_V6ONLY, only_v6 as c_int)
-            .map(|()| self)
+        set_opt(
+            self.as_sock(),
+            v(IPPROTO_IPV6),
+            IPV6_V6ONLY,
+            only_v6 as c_int,
+        )
+        .map(|()| self)
     }
 
     /// Set value for the `SO_REUSEADDR` option on this socket.
@@ -1539,8 +1653,7 @@ impl UdpBuilder {
     ///
     /// [other]: struct.TcpBuilder.html#method.reuse_address
     pub fn reuse_address(&self, reuse: bool) -> io::Result<&Self> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR,
-               reuse as c_int).map(|()| self)
+        set_opt(self.as_sock(), SOL_SOCKET, SO_REUSEADDR, reuse as c_int).map(|()| self)
     }
 
     /// Check the `SO_REUSEADDR` option on this socket.

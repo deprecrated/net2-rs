@@ -13,9 +13,9 @@ use std::fmt;
 use std::io;
 use std::net::{ToSocketAddrs, UdpSocket};
 
-use IntoInner;
 use socket::Socket;
 use sys::c;
+use IntoInner;
 
 /// An "in progress" UDP socket which has not yet been connected.
 ///
@@ -48,42 +48,58 @@ impl UdpBuilder {
     /// This function directly corresponds to the bind(2) function on Windows
     /// and Unix.
     pub fn bind<T>(&self, addr: T) -> io::Result<UdpSocket>
-        where T: ToSocketAddrs
+    where
+        T: ToSocketAddrs,
     {
         try!(self.with_socket(|sock| {
             let addr = try!(::one_addr(addr));
             sock.bind(&addr)
         }));
-        Ok(self.socket.borrow_mut().take().unwrap().into_inner().into_udp_socket())
+        Ok(self
+            .socket
+            .borrow_mut()
+            .take()
+            .unwrap()
+            .into_inner()
+            .into_udp_socket())
     }
 
     fn with_socket<F>(&self, f: F) -> io::Result<()>
-        where F: FnOnce(&Socket) -> io::Result<()>
+    where
+        F: FnOnce(&Socket) -> io::Result<()>,
     {
         match *self.socket.borrow() {
             Some(ref s) => f(s),
-            None => Err(io::Error::new(io::ErrorKind::Other,
-                                       "builder has already finished its socket")),
+            None => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "builder has already finished its socket",
+            )),
         }
     }
 }
 
 impl fmt::Debug for UdpBuilder {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "UdpBuilder {{ socket: {:?} }}",
-               self.socket.borrow().as_ref().unwrap())
+        write!(
+            f,
+            "UdpBuilder {{ socket: {:?} }}",
+            self.socket.borrow().as_ref().unwrap()
+        )
     }
 }
 
 impl ::AsInner for UdpBuilder {
     type Inner = RefCell<Option<Socket>>;
-    fn as_inner(&self) -> &RefCell<Option<Socket>> { &self.socket }
+    fn as_inner(&self) -> &RefCell<Option<Socket>> {
+        &self.socket
+    }
 }
 
 impl ::FromInner for UdpBuilder {
     type Inner = Socket;
     fn from_inner(sock: Socket) -> UdpBuilder {
-        UdpBuilder { socket: RefCell::new(Some(sock)) }
+        UdpBuilder {
+            socket: RefCell::new(Some(sock)),
+        }
     }
 }
-

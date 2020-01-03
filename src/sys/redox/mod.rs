@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use libc::{self, c_int};
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::io::FromRawFd;
-use libc::{self, c_int};
 
 mod impls;
 
@@ -44,7 +43,9 @@ impl Socket {
         }
     }
 
-    pub fn raw(&self) -> c_int { self.fd }
+    pub fn raw(&self) -> c_int {
+        self.fd
+    }
 
     fn into_fd(self) -> c_int {
         let fd = self.fd;

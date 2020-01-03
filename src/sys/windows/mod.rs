@@ -13,7 +13,7 @@
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
-use std::os::windows::io::{RawSocket, FromRawSocket};
+use std::os::windows::io::{FromRawSocket, RawSocket};
 use std::sync::{Once, ONCE_INIT};
 
 const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
@@ -24,20 +24,20 @@ pub mod c {
     pub use winapi::um::winbase::*;
     pub use winapi::um::winsock2::*;
     pub use winapi::um::ws2tcpip::*;
-    
-    pub use winapi::shared::inaddr::*;
+
     pub use winapi::shared::in6addr::*;
+    pub use winapi::shared::inaddr::*;
     pub use winapi::shared::minwindef::*;
     pub use winapi::shared::ntdef::*;
-    pub use winapi::shared::ws2def::*;
-    pub use winapi::shared::ws2def::{SOCK_STREAM, SOCK_DGRAM};
     pub use winapi::shared::ws2def::SOCKADDR as sockaddr;
-    pub use winapi::shared::ws2def::SOCKADDR_STORAGE as sockaddr_storage;
     pub use winapi::shared::ws2def::SOCKADDR_IN as sockaddr_in;
-    pub use winapi::shared::ws2ipdef::*;
-    pub use winapi::shared::ws2ipdef::SOCKADDR_IN6_LH as sockaddr_in6;
-    pub use winapi::shared::ws2ipdef::IP_MREQ as ip_mreq;
+    pub use winapi::shared::ws2def::SOCKADDR_STORAGE as sockaddr_storage;
+    pub use winapi::shared::ws2def::*;
+    pub use winapi::shared::ws2def::{SOCK_DGRAM, SOCK_STREAM};
     pub use winapi::shared::ws2ipdef::IPV6_MREQ as ipv6_mreq;
+    pub use winapi::shared::ws2ipdef::IP_MREQ as ip_mreq;
+    pub use winapi::shared::ws2ipdef::SOCKADDR_IN6_LH as sockaddr_in6;
+    pub use winapi::shared::ws2ipdef::*;
 
     pub fn sockaddr_in_u32(sa: &sockaddr_in) -> u32 {
         ::ntoh(unsafe { *sa.sin_addr.S_un.S_addr() })
@@ -71,8 +71,7 @@ impl Socket {
     pub fn new(family: c_int, ty: c_int) -> io::Result<Socket> {
         init();
         let socket = try!(unsafe {
-            match WSASocketW(family, ty, 0, 0 as *mut _, 0,
-                             WSA_FLAG_OVERLAPPED) {
+            match WSASocketW(family, ty, 0, 0 as *mut _, 0, WSA_FLAG_OVERLAPPED) {
                 INVALID_SOCKET => Err(io::Error::last_os_error()),
                 n => Ok(Socket { socket: n }),
             }
@@ -81,7 +80,9 @@ impl Socket {
         Ok(socket)
     }
 
-    pub fn raw(&self) -> SOCKET { self.socket }
+    pub fn raw(&self) -> SOCKET {
+        self.socket
+    }
 
     fn into_socket(self) -> SOCKET {
         let socket = self.socket;
@@ -102,9 +103,8 @@ impl Socket {
     }
 
     fn set_no_inherit(&self) -> io::Result<()> {
-        ::cvt_win(unsafe {
-            SetHandleInformation(self.socket as HANDLE, HANDLE_FLAG_INHERIT, 0)
-        }).map(|_| ())
+        ::cvt_win(unsafe { SetHandleInformation(self.socket as HANDLE, HANDLE_FLAG_INHERIT, 0) })
+            .map(|_| ())
     }
 }
 

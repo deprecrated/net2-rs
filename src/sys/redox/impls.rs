@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os::unix::io::{FromRawFd, AsRawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd};
 
-use {TcpBuilder, UdpBuilder, FromInner, AsInner};
 use socket::Socket;
 use sys;
+use {AsInner, FromInner, TcpBuilder, UdpBuilder};
 
 impl FromRawFd for TcpBuilder {
     unsafe fn from_raw_fd(fd: usize) -> TcpBuilder {

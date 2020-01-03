@@ -1,16 +1,18 @@
 extern crate net2;
 
-use std::net::{TcpStream, IpAddr, Ipv4Addr, Ipv6Addr};
 use std::io::prelude::*;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, TcpStream};
 use std::thread;
 
 use net2::TcpBuilder;
 
 macro_rules! t {
-    ($e:expr) => (match $e {
-        Ok(e) => e,
-        Err(e) => panic!("{} failed with: {}", stringify!($e), e),
-    })
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
+        }
+    };
 }
 
 #[test]
@@ -31,7 +33,7 @@ fn smoke_build_listener() {
     });
 
     let mut stream = t!(TcpStream::connect(&addr));
-    t!(stream.write(&[1,2,3]));
+    t!(stream.write(&[1, 2, 3]));
     t.join().unwrap();
 }
 

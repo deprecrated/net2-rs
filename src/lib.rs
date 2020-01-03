@@ -36,57 +36,76 @@
 //! // use `stream` as a TcpStream
 //! ```
 
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/net2-rs")]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/net2-rs"
+)]
 #![deny(missing_docs, warnings)]
-
 #![cfg_attr(target_os = "wasi", feature(wasi_ext))]
 
-#[cfg(any(target_os = "redox", target_os = "wasi", unix))] extern crate libc;
+#[cfg(any(target_os = "redox", target_os = "wasi", unix))]
+extern crate libc;
 
-#[cfg(windows)] extern crate winapi;
+#[cfg(windows)]
+extern crate winapi;
 
-#[macro_use] extern crate cfg_if;
+#[macro_use]
+extern crate cfg_if;
 
 use std::io;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::ops::Neg;
-use std::net::{ToSocketAddrs, SocketAddr};
 
-use utils::{One, NetInt};
+use utils::{NetInt, One};
 
+mod ext;
+mod socket;
 mod tcp;
 mod udp;
-mod socket;
-mod ext;
 mod utils;
 
-#[cfg(target_os="redox")] #[path = "sys/redox/mod.rs"] mod sys;
-#[cfg(unix)] #[path = "sys/unix/mod.rs"] mod sys;
-#[cfg(windows)] #[path = "sys/windows/mod.rs"] mod sys;
-#[cfg(target_os = "wasi")] #[path = "sys/wasi/mod.rs"] mod sys;
-#[cfg(all(unix, not(any(target_os = "solaris"))))] pub mod unix;
+#[cfg(target_os = "redox")]
+#[path = "sys/redox/mod.rs"]
+mod sys;
+#[cfg(unix)]
+#[path = "sys/unix/mod.rs"]
+mod sys;
+#[cfg(windows)]
+#[path = "sys/windows/mod.rs"]
+mod sys;
+#[cfg(target_os = "wasi")]
+#[path = "sys/wasi/mod.rs"]
+mod sys;
+#[cfg(all(unix, not(any(target_os = "solaris"))))]
+pub mod unix;
 
+pub use ext::{TcpListenerExt, TcpStreamExt, UdpSocketExt};
 pub use tcp::TcpBuilder;
 pub use udp::UdpBuilder;
-pub use ext::{TcpStreamExt, TcpListenerExt, UdpSocketExt};
 
 fn one_addr<T: ToSocketAddrs>(tsa: T) -> io::Result<SocketAddr> {
     let mut addrs = try!(tsa.to_socket_addrs());
     let addr = match addrs.next() {
         Some(addr) => addr,
-        None => return Err(io::Error::new(io::ErrorKind::Other,
-                                          "no socket addresses could be resolved"))
+        None => {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "no socket addresses could be resolved",
+            ))
+        }
     };
     if addrs.next().is_none() {
         Ok(addr)
     } else {
-        Err(io::Error::new(io::ErrorKind::Other,
-                           "more than one address resolved"))
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "more than one address resolved",
+        ))
     }
 }
 
-fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
+fn cvt<T: One + PartialEq + Neg<Output = T>>(t: T) -> io::Result<T> {
     let one: T = T::one();
     if t == -one {
         Err(io::Error::last_os_error())
@@ -104,9 +123,13 @@ fn cvt_win<T: PartialEq + utils::Zero>(t: T) -> io::Result<T> {
     }
 }
 
-fn hton<I: NetInt>(i: I) -> I { i.to_be() }
+fn hton<I: NetInt>(i: I) -> I {
+    i.to_be()
+}
 
-fn ntoh<I: NetInt>(i: I) -> I { I::from_be(i) }
+fn ntoh<I: NetInt>(i: I) -> I {
+    I::from_be(i)
+}
 
 trait AsInner {
     type Inner;

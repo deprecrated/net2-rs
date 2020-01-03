@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
-use libc::{self, c_int, __wasi_fd_t};
+use libc::{self, __wasi_fd_t, c_int};
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -112,19 +112,28 @@ pub mod c {
         pub imr_interface: in_addr,
     }
 
-    pub unsafe fn getsockname(_socket: __wasi_fd_t, _address: *mut sockaddr,
-                    _address_len: *mut socklen_t) -> c_int {
+    pub unsafe fn getsockname(
+        _socket: __wasi_fd_t,
+        _address: *mut sockaddr,
+        _address_len: *mut socklen_t,
+    ) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn connect(_socket: __wasi_fd_t, _address: *const sockaddr,
-                _len: socklen_t) -> c_int {
+    pub unsafe fn connect(
+        _socket: __wasi_fd_t,
+        _address: *const sockaddr,
+        _len: socklen_t,
+    ) -> c_int {
         unimplemented!()
     }
     pub unsafe fn listen(_socket: __wasi_fd_t, _backlog: c_int) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn bind(_socket: __wasi_fd_t, _address: *const sockaddr,
-            _address_len: socklen_t) -> c_int {
+    pub unsafe fn bind(
+        _socket: __wasi_fd_t,
+        _address: *const sockaddr,
+        _address_len: socklen_t,
+    ) -> c_int {
         unimplemented!()
     }
 

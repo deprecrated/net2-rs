@@ -1,8 +1,8 @@
-use std::os::wasi::io::{FromRawFd, AsRawFd};
+use std::os::wasi::io::{AsRawFd, FromRawFd};
 
-use {TcpBuilder, UdpBuilder, FromInner, AsInner};
 use socket::Socket;
 use sys::{self, c::__wasi_fd_t};
+use {AsInner, FromInner, TcpBuilder, UdpBuilder};
 
 impl FromRawFd for TcpBuilder {
     unsafe fn from_raw_fd(fd: __wasi_fd_t) -> TcpBuilder {
