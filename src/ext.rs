@@ -123,12 +123,24 @@ pub trait TcpStreamExt {
     /// Changes the size of the operating system's receive buffer associated with the socket.
     fn set_recv_buffer_size(&self, size: usize) -> io::Result<()>;
 
+    /// Sets the value of the `SO_RCVLOWAT` option on this socket.
+    ///
+    /// Changes the minimum number of bytes in the buffer to unblock a read operation on socket.
+    fn set_recv_low_watermark(&self, size: usize) -> io::Result<()>;
+
     /// Gets the value of the `SO_RCVBUF` option on this socket.
     ///
     /// For more information about this option, see [`set_recv_buffer_size`][link].
     ///
     /// [link]: #tymethod.set_recv_buffer_size
     fn recv_buffer_size(&self) -> io::Result<usize>;
+
+    /// Gets the value of the `SO_RCVLOWAT` option on this socket.
+    ///
+    /// For more information about this option, see [`set_recv_low_watermark`][link].
+    ///
+    /// [link]: #tymethod.set_recv_low_watermark
+    fn recv_low_watermark(&self) -> io::Result<usize>;
 
     /// Sets the value of the `SO_SNDBUF` option on this socket.
     ///
@@ -686,6 +698,15 @@ impl TcpStreamExt for TcpStream {
 
     fn recv_buffer_size(&self) -> io::Result<usize> {
         get_opt(self.as_sock(), SOL_SOCKET, SO_RCVBUF).map(int2usize)
+    }
+
+    fn set_recv_low_watermark(&self, size: usize) -> io::Result<()> {
+        // TODO: casting usize to a c_int should be a checked cast
+        set_opt(self.as_sock(), SOL_SOCKET, SO_RCVLOWAT, size as c_int)
+    }
+
+    fn recv_low_watermark(&self) -> io::Result<usize> {
+        get_opt(self.as_sock(), SOL_SOCKET, SO_RCVLOWAT).map(int2usize)
     }
 
     fn set_send_buffer_size(&self, size: usize) -> io::Result<()> {
