@@ -667,8 +667,9 @@ impl<T: AsRawSocket> AsSock for T {
 cfg_if! {
     if #[cfg(any(target_os = "macos", target_os = "ios"))] {
         use libc::TCP_KEEPALIVE as KEEPALIVE_OPTION;
-    } else if #[cfg(any(target_os = "openbsd", target_os = "netbsd"))] {
-        use libc::SO_KEEPALIVE as KEEPALIVE_OPTION;
+    } else if #[cfg(target_os = "openbsd")] {
+        // OpenBSD does not have a TCP_KEEPIDLE setsockopt (as of release 6.6).
+        // The sysctl variable net.inet.tcp.keepidle controls the setting globally.
     } else if #[cfg(unix)] {
         use libc::TCP_KEEPIDLE as KEEPALIVE_OPTION;
     } else if #[cfg(target_os = "redox")] {
@@ -737,7 +738,25 @@ impl TcpStreamExt for TcpStream {
         Ok(Some((secs as u32) * 1000))
     }
 
-    #[cfg(unix)]
+    #[cfg(target_os = "openbsd")]
+    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
+                    keepalive.is_some() as c_int)?;
+        Ok(())
+    }
+
+    #[cfg(target_os = "openbsd")]
+    fn keepalive_ms(&self) -> io::Result<Option<u32>> {
+        let keepalive = get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
+                                             SO_KEEPALIVE)?;
+        if keepalive == 0 {
+            return Ok(None)
+        } else {
+            return Ok(Some(1u32))
+        }
+    }
+
+    #[cfg(all(unix, not(target_os = "openbsd")))]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
         try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
                     keepalive.is_some() as c_int));
@@ -748,7 +767,7 @@ impl TcpStreamExt for TcpStream {
         Ok(())
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "openbsd")))]
     fn keepalive_ms(&self) -> io::Result<Option<u32>> {
         let keepalive = try!(get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
                                              SO_KEEPALIVE));
@@ -760,7 +779,7 @@ impl TcpStreamExt for TcpStream {
         Ok(Some((secs as u32) * 1000))
     }
 
-     #[cfg(target_os = "wasi")]
+    #[cfg(target_os = "wasi")]
     fn set_keepalive_ms(&self, _keepalive: Option<u32>) -> io::Result<()> {
         unimplemented!()
     }
