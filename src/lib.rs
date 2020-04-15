@@ -41,6 +41,10 @@
        html_root_url = "https://doc.rust-lang.org/net2-rs")]
 #![deny(missing_docs, warnings)]
 
+// Allow the use of the deprecated try! macro so that this still builds on newer
+// Rust compilers for now:
+#![allow(deprecated)]
+
 #![cfg_attr(target_os = "wasi", feature(wasi_ext))]
 
 #[cfg(any(target_os = "redox", target_os = "wasi", unix))] extern crate libc;
