@@ -63,7 +63,7 @@ struct tcp_keepalive {
 
 #[cfg(target_os = "wasi")]
 pub fn set_opt<T: Copy>(_sock: Socket, _opt: c_int, _val: c_int,
-                       _payload: T) -> io::Result<()> { 
+                       _payload: T) -> io::Result<()> {
     Ok(())
 }
 
