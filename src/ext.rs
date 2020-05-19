@@ -738,24 +738,6 @@ impl TcpStreamExt for TcpStream {
         Ok(Some((secs as u32) * 1000))
     }
 
-    #[cfg(target_os = "openbsd")]
-    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
-        set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
-                    keepalive.is_some() as c_int)?;
-        Ok(())
-    }
-
-    #[cfg(target_os = "openbsd")]
-    fn keepalive_ms(&self) -> io::Result<Option<u32>> {
-        let keepalive = get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
-                                             SO_KEEPALIVE)?;
-        if keepalive == 0 {
-            return Ok(None)
-        } else {
-            return Ok(Some(1u32))
-        }
-    }
-
     #[cfg(all(unix, not(target_os = "openbsd")))]
     fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
         try!(set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
@@ -777,6 +759,24 @@ impl TcpStreamExt for TcpStream {
         let secs = try!(get_opt::<c_int>(self.as_sock(), v(IPPROTO_TCP),
                                         KEEPALIVE_OPTION));
         Ok(Some((secs as u32) * 1000))
+    }
+
+    #[cfg(target_os = "openbsd")]
+    fn set_keepalive_ms(&self, keepalive: Option<u32>) -> io::Result<()> {
+        set_opt(self.as_sock(), SOL_SOCKET, SO_KEEPALIVE,
+                    keepalive.is_some() as c_int)?;
+        Ok(())
+    }
+
+    #[cfg(target_os = "openbsd")]
+    fn keepalive_ms(&self) -> io::Result<Option<u32>> {
+        let keepalive = get_opt::<c_int>(self.as_sock(), SOL_SOCKET,
+                                             SO_KEEPALIVE)?;
+        if keepalive == 0 {
+            return Ok(None)
+        } else {
+            return Ok(Some(1u32))
+        }
     }
 
     #[cfg(target_os = "wasi")]
