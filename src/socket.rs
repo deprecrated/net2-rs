@@ -32,7 +32,7 @@ impl Socket {
     pub fn bind(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr2raw(addr);
         unsafe {
-            ::cvt(c::bind(self.inner.raw(), addr, len as c::socklen_t)).map(|_| ())
+            ::cvt(c::bind(self.inner.raw(), addr.as_ptr(), len as c::socklen_t)).map(|_| ())
         }
     }
 
@@ -45,7 +45,7 @@ impl Socket {
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr2raw(addr);
         unsafe {
-            ::cvt(c::connect(self.inner.raw(), addr, len)).map(|_| ())
+            ::cvt(c::connect(self.inner.raw(), addr.as_ptr(), len)).map(|_| ())
         }
     }
 
@@ -84,13 +84,100 @@ impl ::IntoInner for Socket {
     fn into_inner(self) -> sys::Socket { self.inner }
 }
 
-fn addr2raw(addr: &SocketAddr) -> (*const c::sockaddr, c::socklen_t) {
+/// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
+/// SocketAddr* types into their system representation. The benefit of this specific
+/// type over using `c::sockaddr_storage` is that this type is exactly as large as it
+/// needs to be and not a lot larger. And it can be initialized cleaner from Rust.
+#[repr(C)]
+pub(crate) union SocketAddrCRepr {
+    v4: c::sockaddr_in,
+    v6: c::sockaddr_in6,
+}
+
+impl SocketAddrCRepr {
+    pub(crate) fn as_ptr(&self) -> *const c::sockaddr {
+        self as *const _ as *const c::sockaddr
+    }
+}
+
+fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     match *addr {
-        SocketAddr::V4(ref a) => {
-            (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
+        SocketAddr::V4(addr) => {
+            // `s_addr` is stored as BE on all machine and the array is in BE order.
+            // So the native endian conversion method is used so that it's never swapped.
+            #[cfg(unix)]
+            let sin_addr = c::in_addr {
+                s_addr: u32::from_ne_bytes(addr.ip().octets()),
+            };
+            #[cfg(windows)]
+            let sin_addr = unsafe {
+                let mut s_un = mem::zeroed::<c::in_addr_S_un>();
+                *s_un.S_addr_mut() = u32::from_ne_bytes(addr.ip().octets());
+                c::IN_ADDR { S_un: s_un }
+            };
+
+            let sockaddr_in = c::sockaddr_in {
+                sin_family: c::AF_INET as c::sa_family_t,
+                sin_port: addr.port().to_be(),
+                sin_addr,
+                sin_zero: [0; 8],
+                #[cfg(any(
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "ios",
+                    target_os = "macos",
+                    target_os = "netbsd",
+                    target_os = "openbsd"
+                ))]
+                sin_len: 0,
+            };
+
+            let sockaddr = SocketAddrCRepr { v4: sockaddr_in };
+            (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
         }
-        SocketAddr::V6(ref a) => {
-            (a as *const _ as *const _, mem::size_of_val(a) as c::socklen_t)
+        SocketAddr::V6(addr) => {
+            #[cfg(unix)]
+            let sin6_addr = c::in6_addr {
+                s6_addr: addr.ip().octets(),
+                ..unsafe { mem::zeroed() }
+            };
+            #[cfg(windows)]
+            let sin6_addr = unsafe {
+                let mut u = mem::zeroed::<c::in6_addr_u>();
+                *u.Byte_mut() = addr.ip().octets();
+                c::IN6_ADDR { u }
+            };
+            #[cfg(windows)]
+            let u = unsafe {
+                let mut u = mem::zeroed::<c::SOCKADDR_IN6_LH_u>();
+                *u.sin6_scope_id_mut() = addr.scope_id();
+                u
+            };
+
+            let sockaddr_in6 = c::sockaddr_in6 {
+                sin6_family: c::AF_INET6 as c::sa_family_t,
+                sin6_port: addr.port().to_be(),
+                sin6_addr,
+                sin6_flowinfo: addr.flowinfo(),
+                #[cfg(unix)]
+                sin6_scope_id: addr.scope_id(),
+                #[cfg(windows)]
+                u,
+                #[cfg(any(
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "ios",
+                    target_os = "macos",
+                    target_os = "netbsd",
+                    target_os = "openbsd"
+                ))]
+                sin6_len: 0,
+                #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+                __sin6_src_id: 0,
+            };
+
+            let sockaddr = SocketAddrCRepr { v6: sockaddr_in6 };
+            (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
         }
     }
 }
