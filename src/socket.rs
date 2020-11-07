@@ -137,9 +137,10 @@ fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
         }
         SocketAddr::V6(addr) => {
             #[cfg(unix)]
-            let sin6_addr = c::in6_addr {
-                s6_addr: addr.ip().octets(),
-                ..unsafe { mem::zeroed() }
+            let sin6_addr = {
+                let mut sin6_addr = unsafe { mem::zeroed::<c::in6_addr>() };
+                sin6_addr.s6_addr = addr.ip().octets();
+                sin6_addr
             };
             #[cfg(windows)]
             let sin6_addr = unsafe {
