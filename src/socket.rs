@@ -104,15 +104,15 @@ fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     match *addr {
         SocketAddr::V4(addr) => {
             // `s_addr` is stored as BE on all machine and the array is in BE order.
-            // So the native endian conversion method is used so that it's never swapped.
+            // So just transmuting the octects to the `u32` representation works.
             #[cfg(unix)]
             let sin_addr = c::in_addr {
-                s_addr: u32::from_ne_bytes(addr.ip().octets()),
+                s_addr: unsafe { mem::transmute::<_, u32>(addr.ip().octets()) },
             };
             #[cfg(windows)]
             let sin_addr = unsafe {
                 let mut s_un = mem::zeroed::<c::in_addr_S_un>();
-                *s_un.S_addr_mut() = u32::from_ne_bytes(addr.ip().octets());
+                *s_un.S_addr_mut() = mem::transmute::<_, u32>(addr.ip().octets());
                 c::IN_ADDR { S_un: s_un }
             };
 
