@@ -87,7 +87,7 @@ impl ::IntoInner for Socket {
 /// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
 /// SocketAddr* types into their system representation. The benefit of this specific
 /// type over using `c::sockaddr_storage` is that this type is exactly as large as it
-/// needs to be and not a lot larger. And it can be initialized cleaner from Rust.
+/// needs to be and not a lot larger.
 #[repr(C)]
 pub(crate) union SocketAddrCRepr {
     v4: c::sockaddr_in,
