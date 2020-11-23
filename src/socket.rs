@@ -109,10 +109,8 @@ fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
 
 #[cfg(unix)]
 fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
-    // `s_addr` is stored as BE on all machines and the array is in BE order.
-    // So just transmuting the octects to the `u32` representation works.
     let sin_addr = c::in_addr {
-        s_addr: unsafe { mem::transmute::<_, u32>(addr.ip().octets()) },
+        s_addr: u32::from(*addr.ip()).to_be(),
     };
 
     let sockaddr = SocketAddrCRepr {
@@ -137,11 +135,9 @@ fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
 
 #[cfg(windows)]
 fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
-    // `S_un` is stored as BE on all machines and the array is in BE order.
-    // So just transmuting the octects to the `u32` representation works.
     let sin_addr = unsafe {
         let mut s_un = mem::zeroed::<c::in_addr_S_un>();
-        *s_un.S_addr_mut() = mem::transmute::<_, u32>(addr.ip().octets());
+        *s_un.S_addr_mut() = u32::from(*addr.ip()).to_be();
         c::IN_ADDR { S_un: s_un }
     };
 
