@@ -101,86 +101,115 @@ impl SocketAddrCRepr {
 }
 
 fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
-    match *addr {
-        SocketAddr::V4(addr) => {
-            // `s_addr` is stored as BE on all machine and the array is in BE order.
-            // So just transmuting the octects to the `u32` representation works.
-            #[cfg(unix)]
-            let sin_addr = c::in_addr {
-                s_addr: unsafe { mem::transmute::<_, u32>(addr.ip().octets()) },
-            };
-            #[cfg(windows)]
-            let sin_addr = unsafe {
-                let mut s_un = mem::zeroed::<c::in_addr_S_un>();
-                *s_un.S_addr_mut() = mem::transmute::<_, u32>(addr.ip().octets());
-                c::IN_ADDR { S_un: s_un }
-            };
-
-            let sockaddr_in = c::sockaddr_in {
-                sin_family: c::AF_INET as c::sa_family_t,
-                sin_port: addr.port().to_be(),
-                sin_addr,
-                sin_zero: [0; 8],
-                #[cfg(any(
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "ios",
-                    target_os = "macos",
-                    target_os = "netbsd",
-                    target_os = "openbsd"
-                ))]
-                sin_len: 0,
-            };
-
-            let sockaddr = SocketAddrCRepr { v4: sockaddr_in };
-            (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
-        }
-        SocketAddr::V6(addr) => {
-            #[cfg(unix)]
-            let sin6_addr = {
-                let mut sin6_addr = unsafe { mem::zeroed::<c::in6_addr>() };
-                sin6_addr.s6_addr = addr.ip().octets();
-                sin6_addr
-            };
-            #[cfg(windows)]
-            let sin6_addr = unsafe {
-                let mut u = mem::zeroed::<c::in6_addr_u>();
-                *u.Byte_mut() = addr.ip().octets();
-                c::IN6_ADDR { u }
-            };
-            #[cfg(windows)]
-            let u = unsafe {
-                let mut u = mem::zeroed::<c::SOCKADDR_IN6_LH_u>();
-                *u.sin6_scope_id_mut() = addr.scope_id();
-                u
-            };
-
-            let sockaddr_in6 = c::sockaddr_in6 {
-                sin6_family: c::AF_INET6 as c::sa_family_t,
-                sin6_port: addr.port().to_be(),
-                sin6_addr,
-                sin6_flowinfo: addr.flowinfo(),
-                #[cfg(unix)]
-                sin6_scope_id: addr.scope_id(),
-                #[cfg(windows)]
-                u,
-                #[cfg(any(
-                    target_os = "dragonfly",
-                    target_os = "freebsd",
-                    target_os = "ios",
-                    target_os = "macos",
-                    target_os = "netbsd",
-                    target_os = "openbsd"
-                ))]
-                sin6_len: 0,
-                #[cfg(any(target_os = "solaris", target_os = "illumos"))]
-                __sin6_src_id: 0,
-            };
-
-            let sockaddr = SocketAddrCRepr { v6: sockaddr_in6 };
-            (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
-        }
+    match addr {
+        SocketAddr::V4(v4) => addr2raw_v4(v4),
+        SocketAddr::V6(v6) => addr2raw_v6(v6),
     }
+}
+
+#[cfg(unix)]
+fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
+    // `s_addr` is stored as BE on all machines and the array is in BE order.
+    // So just transmuting the octects to the `u32` representation works.
+    let sin_addr = c::in_addr {
+        s_addr: unsafe { mem::transmute::<_, u32>(addr.ip().octets()) },
+    };
+
+    let sockaddr = SocketAddrCRepr {
+        v4: c::sockaddr_in {
+            sin_family: c::AF_INET as c::sa_family_t,
+            sin_port: addr.port().to_be(),
+            sin_addr,
+            sin_zero: [0; 8],
+            #[cfg(any(
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "ios",
+                target_os = "macos",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            sin_len: 0,
+        },
+    };
+    (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+}
+
+#[cfg(windows)]
+fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
+    // `S_un` is stored as BE on all machines and the array is in BE order.
+    // So just transmuting the octects to the `u32` representation works.
+    let sin_addr = unsafe {
+        let mut s_un = mem::zeroed::<c::in_addr_S_un>();
+        *s_un.S_addr_mut() = mem::transmute::<_, u32>(addr.ip().octets());
+        c::IN_ADDR { S_un: s_un }
+    };
+
+    let sockaddr = SocketAddrCRepr {
+        v4: c::sockaddr_in {
+            sin_family: c::AF_INET as c::sa_family_t,
+            sin_port: addr.port().to_be(),
+            sin_addr,
+            sin_zero: [0; 8],
+        },
+    };
+    (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+}
+
+#[cfg(unix)]
+fn addr2raw_v6(addr: &SocketAddrV6) -> (SocketAddrCRepr, c::socklen_t) {
+    let sin6_addr = {
+        let mut sin6_addr = unsafe { mem::zeroed::<c::in6_addr>() };
+        sin6_addr.s6_addr = addr.ip().octets();
+        sin6_addr
+    };
+
+    let sockaddr = SocketAddrCRepr {
+        v6: c::sockaddr_in6 {
+            sin6_family: c::AF_INET6 as c::sa_family_t,
+            sin6_port: addr.port().to_be(),
+            sin6_addr,
+            sin6_flowinfo: addr.flowinfo(),
+            sin6_scope_id: addr.scope_id(),
+            #[cfg(any(
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "ios",
+                target_os = "macos",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))]
+            sin6_len: 0,
+            #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+            __sin6_src_id: 0,
+        },
+    };
+    (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
+}
+
+#[cfg(windows)]
+fn addr2raw_v6(addr: &SocketAddrV6) -> (SocketAddrCRepr, c::socklen_t) {
+    let sin6_addr = unsafe {
+        let mut u = mem::zeroed::<c::in6_addr_u>();
+        *u.Byte_mut() = addr.ip().octets();
+        c::IN6_ADDR { u }
+    };
+    let scope_id = unsafe {
+        let mut u = mem::zeroed::<c::SOCKADDR_IN6_LH_u>();
+        *u.sin6_scope_id_mut() = addr.scope_id();
+        u
+    };
+
+    let sockaddr = SocketAddrCRepr {
+        v6: c::sockaddr_in6 {
+            sin6_family: c::AF_INET6 as c::sa_family_t,
+            sin6_port: addr.port().to_be(),
+            sin6_addr,
+            sin6_flowinfo: addr.flowinfo(),
+            u: scope_id,
+        },
+    };
+    (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
 }
 
 fn raw2addr(storage: &c::sockaddr_storage, len: c::socklen_t) -> io::Result<SocketAddr> {
