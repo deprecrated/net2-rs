@@ -102,8 +102,8 @@ impl SocketAddrCRepr {
 
 fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     match addr {
-        SocketAddr::V4(v4) => addr2raw_v4(v4),
-        SocketAddr::V6(v6) => addr2raw_v6(v6),
+        &SocketAddr::V4(ref v4) => addr2raw_v4(v4),
+        &SocketAddr::V6(ref v6) => addr2raw_v6(v6),
     }
 }
 
