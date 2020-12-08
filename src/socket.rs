@@ -118,14 +118,18 @@ fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
             sin_family: c::AF_INET as c::sa_family_t,
             sin_port: addr.port().to_be(),
             sin_addr,
+            #[cfg(not(target_os = "haiku"))]
             sin_zero: [0; 8],
+            #[cfg(target_os = "haiku")]
+            sin_zero: [0; 24],
             #[cfg(any(
                 target_os = "dragonfly",
                 target_os = "freebsd",
                 target_os = "ios",
                 target_os = "macos",
                 target_os = "netbsd",
-                target_os = "openbsd"
+                target_os = "openbsd",
+                target_os = "haiku",
             ))]
             sin_len: 0,
         },
@@ -173,7 +177,8 @@ fn addr2raw_v6(addr: &SocketAddrV6) -> (SocketAddrCRepr, c::socklen_t) {
                 target_os = "ios",
                 target_os = "macos",
                 target_os = "netbsd",
-                target_os = "openbsd"
+                target_os = "openbsd",
+                target_os = "haiku",
             ))]
             sin6_len: 0,
             #[cfg(any(target_os = "solaris", target_os = "illumos"))]
