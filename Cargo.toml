@@ -24,6 +24,9 @@ winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2i
 [target.'cfg(any(target_os="redox", unix, target_os="wasi"))'.dependencies]
 libc = "0.2.54"
 
+[target.'cfg(target_os="wasi")'.dependencies]
+wasi = "0.10.0+wasi-snapshot-preview1"
+
 [dependencies]
 cfg-if = "0.1"
 

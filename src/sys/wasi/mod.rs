@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
-use libc::{self, c_int, __wasi_fd_t};
+use libc::c_int;
 use std::io;
 use std::mem;
 use std::net::{TcpListener, TcpStream, UdpSocket};
@@ -66,6 +66,7 @@ pub mod c {
     }
 
     #[repr(C)]
+    #[derive(Copy, Clone)]
     pub struct sockaddr_in6 {
         pub sin6_family: sa_family_t,
         pub sin6_port: in_port_t,
@@ -75,6 +76,7 @@ pub mod c {
     }
 
     #[repr(C)]
+    #[derive(Copy, Clone)]
     pub struct sockaddr_in {
         pub sin_family: sa_family_t,
         pub sin_port: in_port_t,
@@ -112,18 +114,18 @@ pub mod c {
         pub imr_interface: in_addr,
     }
 
-    pub unsafe fn getsockname(_socket: __wasi_fd_t, _address: *mut sockaddr,
+    pub unsafe fn getsockname(_socket: wasi::Fd, _address: *mut sockaddr,
                     _address_len: *mut socklen_t) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn connect(_socket: __wasi_fd_t, _address: *const sockaddr,
+    pub unsafe fn connect(_socket: wasi::Fd, _address: *const sockaddr,
                 _len: socklen_t) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn listen(_socket: __wasi_fd_t, _backlog: c_int) -> c_int {
+    pub unsafe fn listen(_socket: wasi::Fd, _backlog: c_int) -> c_int {
         unimplemented!()
     }
-    pub unsafe fn bind(_socket: __wasi_fd_t, _address: *const sockaddr,
+    pub unsafe fn bind(_socket: wasi::Fd, _address: *const sockaddr,
             _address_len: socklen_t) -> c_int {
         unimplemented!()
     }
@@ -138,7 +140,7 @@ pub mod c {
 }
 
 pub struct Socket {
-    fd: __wasi_fd_t,
+    fd: wasi::Fd,
 }
 
 impl Socket {
@@ -146,11 +148,11 @@ impl Socket {
         unimplemented!()
     }
 
-    pub fn raw(&self) -> libc::__wasi_fd_t {
+    pub fn raw(&self) -> wasi::Fd {
         self.fd
     }
 
-    fn into_fd(self) -> libc::__wasi_fd_t {
+    fn into_fd(self) -> wasi::Fd {
         let fd = self.fd;
         mem::forget(self);
         fd
@@ -170,8 +172,8 @@ impl Socket {
 }
 
 impl ::FromInner for Socket {
-    type Inner = libc::__wasi_fd_t;
-    fn from_inner(fd: libc::__wasi_fd_t) -> Socket {
+    type Inner = wasi::Fd;
+    fn from_inner(fd: wasi::Fd) -> Socket {
         Socket { fd: fd }
     }
 }

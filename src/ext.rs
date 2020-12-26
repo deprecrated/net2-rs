@@ -1218,8 +1218,8 @@ impl UdpSocketExt for UdpSocket {
     fn send(&self, buf: &[u8]) -> io::Result<usize> {
         let _so_datalen: *mut sys::c::size_t = &mut 0;
         unsafe {
-            let _errno = libc::__wasi_sock_send(
-                self.as_sock() as libc::__wasi_fd_t,
+            let _errno = wasi::wasi_snapshot_preview1::sock_send(
+                self.as_sock() as wasi::Fd,
                 buf.as_ptr() as *const _,
                 buf.len(),
                 0,
@@ -1259,9 +1259,9 @@ impl UdpSocketExt for UdpSocket {
     #[cfg(target_os = "wasi")]
     fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         let _ro_datalen: *mut sys::c::size_t = &mut 0;
-        let _ro_flags: *mut sys::c::__wasi_roflags_t = &mut 0;
+        let _ro_flags: *mut wasi::Roflags = &mut 0;
         unsafe {
-            let _errno = __wasi_sock_recv(
+            let _errno = wasi::wasi_snapshot_preview1::sock_recv(
                 self.as_sock(),
                 buf.as_mut_ptr() as *mut _,
                 buf.len(),
