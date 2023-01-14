@@ -22,7 +22,7 @@ include = [
 winapi = { version = "0.3", features = ["handleapi", "winsock2", "ws2def", "ws2ipdef", "ws2tcpip"] }
 
 [target.'cfg(any(unix, target_os="wasi"))'.dependencies]
-libc = "0.2.54"
+libc = "0.2.139"
 
 [dependencies]
 cfg-if = "0.1"

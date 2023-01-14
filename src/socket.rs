@@ -130,6 +130,7 @@ fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
                 target_os = "netbsd",
                 target_os = "openbsd",
                 target_os = "haiku",
+                target_os = "nto",
             ))]
             sin_len: 0,
         },
@@ -179,6 +180,7 @@ fn addr2raw_v6(addr: &SocketAddrV6) -> (SocketAddrCRepr, c::socklen_t) {
                 target_os = "netbsd",
                 target_os = "openbsd",
                 target_os = "haiku",
+                target_os = "nto",
             ))]
             sin6_len: 0,
             #[cfg(any(target_os = "solaris", target_os = "illumos"))]

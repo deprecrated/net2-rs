@@ -661,7 +661,7 @@ impl<T: AsRawSocket> AsSock for T {
 }
 
 cfg_if! {
-    if #[cfg(any(target_os = "macos", target_os = "ios"))] {
+    if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "nto"))] {
         use libc::TCP_KEEPALIVE as KEEPALIVE_OPTION;
     } else if #[cfg(any(target_os = "haiku", target_os = "netbsd", target_os = "openbsd"))] {
         use libc::SO_KEEPALIVE as KEEPALIVE_OPTION;
@@ -1073,6 +1073,7 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
     }
 
+    #[cfg(not(target_os = "nto"))]
     fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                          -> io::Result<()> {
         let mreq = ipv6_mreq {
@@ -1081,6 +1082,12 @@ impl UdpSocketExt for UdpSocket {
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_ADD_MEMBERSHIP,
                mreq)
+    }
+
+    #[cfg(target_os = "nto")]
+    fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32)
+                         -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::Unsupported, "not supported by platform"))
     }
 
     fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
@@ -1092,6 +1099,7 @@ impl UdpSocketExt for UdpSocket {
         set_opt(self.as_sock(), IPPROTO_IP, IP_DROP_MEMBERSHIP, mreq)
     }
 
+    #[cfg(not(target_os = "nto"))]
     fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
                           -> io::Result<()> {
         let mreq = ipv6_mreq {
@@ -1100,6 +1108,12 @@ impl UdpSocketExt for UdpSocket {
         };
         set_opt(self.as_sock(), v(IPPROTO_IPV6), IPV6_DROP_MEMBERSHIP,
                mreq)
+    }
+
+    #[cfg(target_os = "nto")]
+    fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32)
+                          -> io::Result<()> {
+        Err(io::Error::new(io::ErrorKind::Unsupported, "not supported by platform"))
     }
 
     fn set_read_timeout_ms(&self, dur: Option<u32>) -> io::Result<()> {
