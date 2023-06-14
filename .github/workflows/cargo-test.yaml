@@ -19,6 +19,10 @@ jobs:
             rust: stable-i686
           - os: windows-latest
             rust: stable-x86_64-gnu
+        exclude:
+          # rust/libc does not appear to link on macos-latest with rust 1.21.0
+          - os: macos-latest
+            rust: 1.21.0
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
