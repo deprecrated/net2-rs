@@ -107,7 +107,7 @@ fn addr2raw(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "wasi"))]
 fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
     let sin_addr = c::in_addr {
         s_addr: u32::from(*addr.ip()).to_be(),
@@ -157,7 +157,7 @@ fn addr2raw_v4(addr: &SocketAddrV4) -> (SocketAddrCRepr, c::socklen_t) {
     (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "wasi"))]
 fn addr2raw_v6(addr: &SocketAddrV6) -> (SocketAddrCRepr, c::socklen_t) {
     let sin6_addr = {
         let mut sin6_addr = unsafe { mem::zeroed::<c::in6_addr>() };
